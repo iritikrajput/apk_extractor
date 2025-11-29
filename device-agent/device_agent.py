@@ -4,7 +4,7 @@ Fully automated APK extraction with auto-install and Google login
 
 Features:
 - Auto-login to Google Play Store
-- Auto-install apps from Play Store
+- Auto-install apps from Play Store (IMPROVED)
 - Extract APK after installation
 - Auto-uninstall after download
 - 24/7 headless operation
@@ -26,34 +26,29 @@ from datetime import datetime, timezone
 
 app = Flask(__name__)
 
-# Directories
 DATA_DIR = os.getenv("APK_STORAGE_PATH", "./pulls")
 LOG_DIR = os.getenv("LOG_PATH", "./logs")
 
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
 
-# ADB Configuration
 DEVICE_ID = os.getenv("DEVICE_ID", "emulator-5554")
 ADB_TIMEOUT = int(os.getenv("ADB_TIMEOUT", "60"))
 EXTRACTION_TIMEOUT = int(os.getenv("EXTRACTION_TIMEOUT", "300"))
 INSTALL_TIMEOUT = int(os.getenv("INSTALL_TIMEOUT", "180"))
 MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
 
-# Google Account Credentials (set via environment variables)
 GOOGLE_EMAIL = os.getenv("GOOGLE_EMAIL", "")
 GOOGLE_PASSWORD = os.getenv("GOOGLE_PASSWORD", "")
 
-# Auto cleanup
 AUTO_CLEANUP = os.getenv("AUTO_CLEANUP", "true").lower() == "true"
 CLEANUP_DELAY = int(os.getenv("CLEANUP_DELAY", "300"))
 
-# Track pending cleanups
 pending_cleanups = {}
 cleanup_lock = threading.Lock()
 
 # ============================================
-# LOGGING SETUP
+# LOGGING
 # ============================================
 
 logging.basicConfig(
@@ -67,34 +62,11 @@ logging.basicConfig(
 logger = logging.getLogger('device_agent')
 
 # ============================================
-# HELPER FUNCTIONS
+# ADB HELPERS
 # ============================================
 
-def validate_package_name(package_name):
-    """Validate Android package name format"""
-    if not package_name:
-        return False, "Package name is required"
-    
-    package_name = package_name.strip()
-    
-    if len(package_name) > 256:
-        return False, "Package name too long"
-    
-    pattern = r'^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$'
-    if not re.match(pattern, package_name):
-        return False, "Invalid package name format"
-    
-    return True, package_name
-
-
-def sanitize_filename(filename):
-    """Sanitize filename"""
-    sanitized = re.sub(r'[^a-zA-Z0-9._-]', '_', filename)
-    return sanitized.replace('..', '_')
-
-
 def run_adb(command, timeout=None, retries=3, check=True):
-    """Execute ADB command with retry logic"""
+    """Execute ADB command"""
     if timeout is None:
         timeout = ADB_TIMEOUT
     
@@ -113,121 +85,112 @@ def run_adb(command, timeout=None, retries=3, check=True):
                 raise Exception(last_error)
             
             return result.stdout
-            
         except subprocess.TimeoutExpired:
-            last_error = f"ADB timeout after {timeout}s"
+            last_error = f"Timeout after {timeout}s"
             if attempt < retries - 1:
                 time.sleep(2)
-                continue
         except Exception as e:
             if "ADB Error" not in str(e):
                 last_error = str(e)
             if attempt < retries - 1:
                 time.sleep(2)
-                continue
     
     if check:
-        raise Exception(last_error or "ADB command failed")
+        raise Exception(last_error or "ADB failed")
     return ""
 
 
+def validate_package_name(package_name):
+    if not package_name:
+        return False, "Package name required"
+    package_name = package_name.strip()
+    if len(package_name) > 256:
+        return False, "Package name too long"
+    pattern = r'^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$'
+    if not re.match(pattern, package_name):
+        return False, "Invalid package format"
+    return True, package_name
+
+
+def sanitize_filename(filename):
+    sanitized = re.sub(r'[^a-zA-Z0-9._-]', '_', filename)
+    return sanitized.replace('..', '_')
+
+
 def keep_device_awake():
-    """Configure device to stay awake 24/7"""
+    """Configure device for 24/7 operation"""
     try:
-        logger.info("Configuring device for 24/7 operation...")
-        
-        # Disable screen timeout (set to maximum - never)
         run_adb(["shell", "settings", "put", "system", "screen_off_timeout", "2147483647"], check=False)
-        
-        # Keep screen on while charging (emulator is always "charging")
         run_adb(["shell", "settings", "put", "global", "stay_on_while_plugged_in", "7"], check=False)
-        
-        # Disable lock screen
-        run_adb(["shell", "settings", "put", "secure", "lockscreen.disabled", "1"], check=False)
-        
-        # Wake up device
+        run_adb(["shell", "svc", "power", "stayon", "true"], check=False)
         run_adb(["shell", "input", "keyevent", "KEYCODE_WAKEUP"], check=False)
-        
-        # Unlock (swipe up)
         run_adb(["shell", "input", "swipe", "500", "1500", "500", "500"], check=False)
-        
-        logger.info("Device configured for 24/7 operation")
+        logger.info("Device configured for 24/7")
         return True
-    except Exception as e:
-        logger.warning(f"Failed to configure 24/7 mode: {e}")
+    except:
         return False
 
 
 def wake_device():
-    """Wake up the device screen"""
+    """Wake up screen"""
     try:
         run_adb(["shell", "input", "keyevent", "KEYCODE_WAKEUP"], check=False)
-        time.sleep(0.3)
+        time.sleep(0.5)
         run_adb(["shell", "input", "swipe", "500", "1500", "500", "500"], check=False)
-        time.sleep(0.3)
-    except Exception:
+        time.sleep(0.5)
+    except:
         pass
 
 
 def wait_for_device(timeout=120):
-    """Wait for device to be ready"""
-    logger.info(f"Waiting for device {DEVICE_ID}...")
-    
+    """Wait for device"""
     try:
         subprocess.run(["adb", "-s", DEVICE_ID, "wait-for-device"], timeout=timeout, check=True)
-        
-        # Wait for package manager
-        start_time = time.time()
-        while time.time() - start_time < timeout:
+        start = time.time()
+        while time.time() - start < timeout:
             try:
                 output = run_adb(["shell", "pm", "list", "packages", "-s"], timeout=10, retries=1, check=False)
                 if output and "package:" in output:
                     keep_device_awake()
                     return True
-            except Exception:
+            except:
                 pass
             time.sleep(3)
-        
         return True
-    except Exception as e:
-        logger.warning(f"Device wait issue: {e}")
+    except:
         return False
 
 
 def check_app_installed(package_name):
-    """Check if app is installed"""
+    """Check if app installed"""
     try:
         output = run_adb(["shell", "pm", "list", "packages", package_name], check=False)
         return f"package:{package_name}" in output
-    except Exception:
+    except:
         return False
 
 
 def get_apk_paths(package_name):
-    """Get all APK paths for a package"""
+    """Get APK paths"""
     output = run_adb(["shell", "pm", "path", package_name])
     paths = []
-    
     for line in output.splitlines():
         if line.startswith("package:"):
             path = line.split(":", 1)[1].strip()
             if path:
                 paths.append(path)
-    
     return paths
 
 
 def calculate_hash(filepath):
-    """Calculate SHA-256 hash"""
-    sha256_hash = hashlib.sha256()
+    sha256 = hashlib.sha256()
     with open(filepath, "rb") as f:
-        for byte_block in iter(lambda: f.read(65536), b""):
-            sha256_hash.update(byte_block)
-    return sha256_hash.hexdigest()
+        for block in iter(lambda: f.read(65536), b""):
+            sha256.update(block)
+    return sha256.hexdigest()
 
 
 def format_bytes(size):
-    """Format bytes to human-readable"""
     for unit in ['B', 'KB', 'MB', 'GB']:
         if size < 1024.0:
             return f"{size:.2f} {unit}"
@@ -236,30 +199,25 @@ def format_bytes(size):
 
 
 def uninstall_app(package_name):
-    """Uninstall an app to free memory"""
     try:
-        logger.info(f"Uninstalling {package_name}...")
+        logger.info(f"Uninstalling {package_name}")
         run_adb(["shell", "pm", "uninstall", package_name], check=False)
         return True
-    except Exception as e:
-        logger.warning(f"Failed to uninstall {package_name}: {e}")
+    except:
         return False
 
 
 def cleanup_package_files(package_name):
-    """Delete extracted APK files"""
     try:
-        package_dir = os.path.join(DATA_DIR, sanitize_filename(package_name))
-        if os.path.exists(package_dir):
-            import shutil
-            shutil.rmtree(package_dir)
-            logger.info(f"Cleaned up files for {package_name}")
-    except Exception as e:
-        logger.warning(f"Cleanup failed for {package_name}: {e}")
+        import shutil
+        pkg_dir = os.path.join(DATA_DIR, sanitize_filename(package_name))
+        if os.path.exists(pkg_dir):
+            shutil.rmtree(pkg_dir)
+    except:
+        pass
 
 
 def schedule_cleanup(package_name, delay=None):
-    """Schedule cleanup after delay"""
     if delay is None:
         delay = CLEANUP_DELAY
     
@@ -273,57 +231,100 @@ def schedule_cleanup(package_name, delay=None):
     
     with cleanup_lock:
         pending_cleanups[package_name] = True
-    
-    thread = threading.Thread(target=do_cleanup, daemon=True)
-    thread.start()
+    threading.Thread(target=do_cleanup, daemon=True).start()
 
 
 # ============================================
-# UI AUTOMATION HELPERS
+# UI AUTOMATION - IMPROVED
 # ============================================
 
 def tap(x, y, delay=0.5):
-    """Tap at coordinates"""
-    run_adb(["shell", "input", "tap", str(x), str(y)], check=False)
+    """Tap screen"""
+    run_adb(["shell", "input", "tap", str(int(x)), str(int(y))], check=False)
     time.sleep(delay)
 
 
 def type_text(text, delay=0.3):
-    """Type text using ADB"""
-    # Escape special characters
+    """Type text"""
     escaped = text.replace(" ", "%s").replace("@", "\\@").replace("&", "\\&")
     run_adb(["shell", "input", "text", escaped], check=False)
     time.sleep(delay)
 
 
 def press_key(keycode, delay=0.3):
-    """Press a key"""
+    """Press key"""
     run_adb(["shell", "input", "keyevent", keycode], check=False)
     time.sleep(delay)
 
 
+def press_enter():
+    """Press Enter key"""
+    press_key("66", delay=0.5)
+
+
+def press_tab():
+    """Press Tab key"""
+    press_key("61", delay=0.3)
+
+
+def press_back():
+    """Press Back button"""
+    press_key("KEYCODE_BACK", delay=0.5)
+
+
+def press_home():
+    """Press Home button"""
+    press_key("KEYCODE_HOME", delay=0.5)
+
+
 def get_screen_xml():
-    """Get UI hierarchy XML"""
+    """Get UI hierarchy"""
     try:
-        output = run_adb(["shell", "uiautomator", "dump", "/dev/tty"], timeout=15, check=False)
+        # Dump to device then pull
+        run_adb(["shell", "uiautomator", "dump", "/sdcard/ui_dump.xml"], timeout=15, check=False)
+        output = run_adb(["shell", "cat", "/sdcard/ui_dump.xml"], timeout=10, check=False)
         return output
-    except Exception:
+    except:
         return ""
 
 
-def find_element_bounds(xml, text=None, resource_id=None, content_desc=None):
-    """Find element bounds from UI XML"""
+def get_screen_size():
+    """Get screen resolution"""
+    try:
+        output = run_adb(["shell", "wm", "size"], check=False)
+        match = re.search(r'(\d+)x(\d+)', output)
+        if match:
+            return int(match.group(1)), int(match.group(2))
+    except:
+        pass
+    return 1080, 2280  # Default
+
+
+def find_element(xml, text=None, resource_id=None, class_name=None, content_desc=None):
+    """Find element bounds in UI XML"""
+    if not xml:
+        return None
+    
+    # Build pattern based on attributes
     patterns = []
     
     if text:
-        patterns.append(f'text="{text}".*?bounds="\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]"')
+        # Exact match
+        patterns.append(rf'text="{re.escape(text)}"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"')
+        # Partial match
+        patterns.append(rf'text="[^"]*{re.escape(text)}[^"]*"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"')
+    
     if resource_id:
-        patterns.append(f'resource-id="{resource_id}".*?bounds="\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]"')
+        patterns.append(rf'resource-id="[^"]*{re.escape(resource_id)}[^"]*"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"')
+    
     if content_desc:
-        patterns.append(f'content-desc="{content_desc}".*?bounds="\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]"')
+        patterns.append(rf'content-desc="[^"]*{re.escape(content_desc)}[^"]*"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"')
+    
+    if class_name:
+        patterns.append(rf'class="{re.escape(class_name)}"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"')
     
     for pattern in patterns:
-        match = re.search(pattern, xml, re.IGNORECASE | re.DOTALL)
+        match = re.search(pattern, xml, re.IGNORECASE)
         if match:
             x1, y1, x2, y2 = map(int, match.groups())
             return ((x1 + x2) // 2, (y1 + y2) // 2)
@@ -331,300 +332,304 @@ def find_element_bounds(xml, text=None, resource_id=None, content_desc=None):
     return None
 
 
-def click_element(text=None, resource_id=None, content_desc=None, xml=None):
-    """Find and click an element"""
-    if xml is None:
-        xml = get_screen_xml()
-    
-    coords = find_element_bounds(xml, text=text, resource_id=resource_id, content_desc=content_desc)
+def click_element(text=None, resource_id=None, content_desc=None, class_name=None):
+    """Find and click element"""
+    xml = get_screen_xml()
+    coords = find_element(xml, text=text, resource_id=resource_id, 
+                         content_desc=content_desc, class_name=class_name)
     if coords:
         tap(coords[0], coords[1])
         return True
     return False
 
 
+def scroll_down():
+    """Scroll down"""
+    width, height = get_screen_size()
+    run_adb(["shell", "input", "swipe", 
+             str(width // 2), str(int(height * 0.7)),
+             str(width // 2), str(int(height * 0.3)), "300"], check=False)
+    time.sleep(1)
+
+
 # ============================================
-# GOOGLE LOGIN AUTOMATION
+# PLAY STORE AUTOMATION - IMPROVED
+# ============================================
+
+def open_play_store_app(package_name):
+    """Open Play Store for app"""
+    wake_device()
+    logger.info(f"Opening Play Store for {package_name}")
+    
+    # Method 1: Direct market intent
+    run_adb([
+        "shell", "am", "start", "-a", "android.intent.action.VIEW",
+        "-d", f"market://details?id={package_name}"
+    ])
+    time.sleep(4)
+    
+    return True
+
+
+def find_install_button():
+    """Find Install button coordinates using multiple methods"""
+    xml = get_screen_xml()
+    width, height = get_screen_size()
+    
+    # Method 1: Look for Install text
+    install_texts = ["Install", "INSTALL", "Get", "GET", "Free", "FREE"]
+    for text in install_texts:
+        coords = find_element(xml, text=text)
+        if coords:
+            logger.info(f"Found '{text}' button at {coords}")
+            return coords
+    
+    # Method 2: Look for button with install in resource-id
+    coords = find_element(xml, resource_id="install")
+    if coords:
+        logger.info(f"Found install button by resource-id at {coords}")
+        return coords
+    
+    # Method 3: Look for common Play Store button patterns
+    button_patterns = [
+        r'class="android\.widget\.Button"[^>]*text="Install"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"',
+        r'text="Install"[^>]*clickable="true"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"',
+        r'content-desc="[^"]*[Ii]nstall[^"]*"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"',
+    ]
+    
+    for pattern in button_patterns:
+        match = re.search(pattern, xml, re.IGNORECASE)
+        if match:
+            x1, y1, x2, y2 = map(int, match.groups())
+            coords = ((x1 + x2) // 2, (y1 + y2) // 2)
+            logger.info(f"Found install button by pattern at {coords}")
+            return coords
+    
+    # Method 4: Default positions for common screen sizes
+    # Play Store typically has Install button on right side
+    default_positions = [
+        (width - 150, 550),   # Right side, upper area
+        (width - 150, 600),   # Right side
+        (width - 200, 550),
+        (width - 200, 600),
+        (width // 2 + 200, 550),
+        (width // 2 + 200, 600),
+    ]
+    
+    logger.info("Using default button positions")
+    return default_positions[0]  # Return first default position
+
+
+def click_install_button():
+    """Click the Install button"""
+    coords = find_install_button()
+    if coords:
+        logger.info(f"Clicking Install at {coords}")
+        tap(coords[0], coords[1], delay=2)
+        return True
+    return False
+
+
+def handle_install_prompts():
+    """Handle any prompts after clicking Install"""
+    time.sleep(2)
+    xml = get_screen_xml()
+    
+    # Handle "Continue" prompt
+    if click_element(text="Continue"):
+        time.sleep(2)
+        xml = get_screen_xml()
+    
+    # Handle account selection
+    if "Choose an account" in xml or "account" in xml.lower():
+        # Click first account
+        tap(540, 400, delay=2)
+    
+    # Handle permissions
+    permission_texts = ["Allow", "ALLOW", "Accept", "ACCEPT", "OK", "Continue", "CONTINUE"]
+    for text in permission_texts:
+        if click_element(text=text):
+            time.sleep(1)
+
+
+def wait_for_download_to_start():
+    """Wait for download to begin"""
+    logger.info("Waiting for download to start...")
+    for _ in range(10):
+        xml = get_screen_xml()
+        if any(x in xml for x in ["Pending", "Downloading", "Installing", "Cancel", "Open", "Uninstall"]):
+            logger.info("Download/Install in progress")
+            return True
+        time.sleep(2)
+    return False
+
+
+def wait_for_installation(package_name, timeout=None):
+    """Wait for installation to complete"""
+    if timeout is None:
+        timeout = INSTALL_TIMEOUT
+    
+    logger.info(f"Waiting for {package_name} installation (max {timeout}s)...")
+    start = time.time()
+    
+    while time.time() - start < timeout:
+        # Check if installed
+        if check_app_installed(package_name):
+            logger.info(f"{package_name} installed successfully!")
+            return True
+        
+        # Check UI for status
+        xml = get_screen_xml()
+        
+        # If we see "Open" button, app is installed
+        if "Open" in xml and "Uninstall" in xml:
+            logger.info("Detected 'Open' button - app installed")
+            return check_app_installed(package_name)
+        
+        # Still downloading/installing
+        if any(x in xml for x in ["Downloading", "Installing", "Pending", "%"]):
+            logger.debug("Installation in progress...")
+        
+        time.sleep(5)
+    
+    logger.warning(f"Installation timeout for {package_name}")
+    return False
+
+
+def install_from_play_store(package_name):
+    """
+    IMPROVED: Install app from Play Store
+    """
+    # Check if already installed
+    if check_app_installed(package_name):
+        logger.info(f"{package_name} already installed")
+        return "already_installed"
+    
+    logger.info(f"=== Installing {package_name} from Play Store ===")
+    
+    # Open Play Store
+    open_play_store_app(package_name)
+    time.sleep(3)
+    
+    # Check if app exists
+    xml = get_screen_xml()
+    not_found_texts = ["We couldn't find", "not found", "isn't available", "Item not found"]
+    if any(text.lower() in xml.lower() for text in not_found_texts):
+        logger.warning(f"App {package_name} not found on Play Store")
+        press_home()
+        return "not_found"
+    
+    # Try to click Install button multiple times with different methods
+    for attempt in range(5):
+        logger.info(f"Install attempt {attempt + 1}/5")
+        
+        # Click Install
+        click_install_button()
+        time.sleep(3)
+        
+        # Handle any prompts
+        handle_install_prompts()
+        
+        # Check if download started
+        if wait_for_download_to_start():
+            # Wait for installation
+            if wait_for_installation(package_name):
+                press_home()
+                return "installed"
+        
+        # If still on same page, try scrolling and clicking again
+        xml = get_screen_xml()
+        if "Install" in xml:
+            scroll_down()
+            time.sleep(1)
+    
+    # Final check
+    time.sleep(5)
+    if check_app_installed(package_name):
+        press_home()
+        return "installed"
+    
+    logger.warning(f"Failed to install {package_name}")
+    press_home()
+    return "failed"
+
+
+# ============================================
+# GOOGLE LOGIN
 # ============================================
 
 def check_play_store_signed_in():
-    """Check if Play Store is signed in"""
+    """Check if signed in"""
     try:
-        # Open Play Store
         run_adb(["shell", "am", "start", "-n", "com.android.vending/.AssetBrowserActivity"])
-        time.sleep(3)
-        
+        time.sleep(4)
         xml = get_screen_xml()
         
-        # If we see "Sign in" button, not signed in
-        if "Sign in" in xml or "sign in" in xml.lower():
+        if any(x in xml for x in ["Sign in", "sign in", "Add account"]):
             return False
-        
-        # If we see account icon or search, likely signed in
-        if "Search" in xml or "account" in xml.lower() or "Avatar" in xml:
+        if any(x in xml for x in ["Search", "account", "Avatar", "Apps", "Games"]):
             return True
-        
-        return True  # Assume signed in if unclear
-        
-    except Exception as e:
-        logger.warning(f"Error checking Play Store login: {e}")
+        return True
+    except:
         return False
 
 
 def google_login(email, password):
-    """
-    Automate Google login on Play Store
-    
-    This is a best-effort automation - Google's UI changes frequently
-    """
+    """Automate Google login"""
     if not email or not password:
-        logger.warning("Google credentials not provided")
         return False
     
     logger.info("Attempting Google login...")
     wake_device()
     
     try:
-        # Open Play Store
         run_adb(["shell", "am", "start", "-n", "com.android.vending/.AssetBrowserActivity"])
         time.sleep(4)
         
-        xml = get_screen_xml()
-        
-        # Look for Sign in button
-        if click_element(text="Sign in", xml=xml):
-            time.sleep(3)
-        elif click_element(text="SIGN IN", xml=xml):
-            time.sleep(3)
-        else:
-            # Try tapping common position for sign in
-            tap(540, 1700, delay=3)
-        
-        # Now we should be on Google sign-in page
-        xml = get_screen_xml()
+        # Click Sign in
+        if not click_element(text="Sign in"):
+            click_element(text="SIGN IN")
+        time.sleep(3)
         
         # Enter email
-        logger.info("Entering email...")
-        
-        # Click email field
-        if click_element(resource_id="identifierId", xml=xml):
-            time.sleep(1)
-        else:
-            # Try clicking on "Email or phone" text
-            click_element(text="Email or phone", xml=xml)
-            time.sleep(1)
-        
-        # Type email
         type_text(email, delay=1)
-        
-        # Click Next
-        time.sleep(1)
-        xml = get_screen_xml()
-        if not click_element(text="Next", xml=xml):
-            click_element(resource_id="identifierNext", xml=xml)
-        
+        press_enter()
         time.sleep(4)
         
         # Enter password
-        logger.info("Entering password...")
-        xml = get_screen_xml()
-        
-        # Click password field
-        if click_element(text="Enter your password", xml=xml):
-            time.sleep(1)
-        elif "password" in xml.lower():
-            # Find password field
-            tap(540, 600, delay=1)
-        
-        # Type password
         type_text(password, delay=1)
-        
-        # Click Next
-        time.sleep(1)
-        xml = get_screen_xml()
-        if not click_element(text="Next", xml=xml):
-            click_element(resource_id="passwordNext", xml=xml)
-        
+        press_enter()
         time.sleep(5)
         
-        # Handle any "I agree" / "Accept" prompts
-        for _ in range(3):
+        # Handle prompts
+        for _ in range(5):
             xml = get_screen_xml()
-            if click_element(text="I agree", xml=xml):
-                time.sleep(2)
-            elif click_element(text="Accept", xml=xml):
-                time.sleep(2)
-            elif click_element(text="ACCEPT", xml=xml):
-                time.sleep(2)
-            elif click_element(text="More", xml=xml):
-                time.sleep(2)
-            elif click_element(text="SKIP", xml=xml):
-                time.sleep(2)
-            elif click_element(text="Skip", xml=xml):
-                time.sleep(2)
-            elif click_element(text="No thanks", xml=xml):
-                time.sleep(2)
+            for text in ["I agree", "Accept", "ACCEPT", "More", "SKIP", "Skip", "No thanks", "Not now"]:
+                if click_element(text=text):
+                    time.sleep(2)
+                    break
             else:
                 break
         
-        # Press Home
-        press_key("KEYCODE_HOME")
-        
-        # Verify login
+        press_home()
         time.sleep(2)
-        if check_play_store_signed_in():
-            logger.info("Google login successful!")
-            return True
-        else:
-            logger.warning("Google login may have failed")
-            return False
         
+        return check_play_store_signed_in()
     except Exception as e:
-        logger.error(f"Google login error: {e}")
+        logger.error(f"Login error: {e}")
         return False
 
 
 def ensure_play_store_login():
-    """Ensure Play Store is signed in"""
+    """Ensure signed in"""
     if check_play_store_signed_in():
-        logger.info("Play Store already signed in")
-        press_key("KEYCODE_HOME")
+        press_home()
         return True
     
     if GOOGLE_EMAIL and GOOGLE_PASSWORD:
         return google_login(GOOGLE_EMAIL, GOOGLE_PASSWORD)
     
-    logger.warning("Play Store not signed in and no credentials provided")
     return False
-
-
-# ============================================
-# PLAY STORE AUTOMATION
-# ============================================
-
-def open_play_store(package_name):
-    """Open Play Store page for an app"""
-    try:
-        wake_device()
-        logger.info(f"Opening Play Store for {package_name}...")
-        run_adb([
-            "shell", "am", "start", "-a", "android.intent.action.VIEW",
-            "-d", f"market://details?id={package_name}"
-        ])
-        time.sleep(4)
-        return True
-    except Exception as e:
-        logger.error(f"Failed to open Play Store: {e}")
-        return False
-
-
-def click_install_button():
-    """Find and click Install button"""
-    try:
-        xml = get_screen_xml()
-        
-        # Try various Install button patterns
-        install_patterns = [
-            ("text", "Install"),
-            ("text", "INSTALL"),
-            ("text", "GET"),
-            ("text", "Update"),
-            ("text", "UPDATE"),
-            ("content_desc", "Install"),
-        ]
-        
-        for attr, value in install_patterns:
-            if attr == "text":
-                if click_element(text=value, xml=xml):
-                    logger.info(f"Clicked '{value}' button")
-                    return True
-            elif attr == "content_desc":
-                if click_element(content_desc=value, xml=xml):
-                    logger.info(f"Clicked '{value}' button")
-                    return True
-        
-        # Try common coordinates for Install button
-        common_positions = [
-            (900, 600), (540, 600), (900, 650), (540, 650),
-            (800, 550), (650, 600), (750, 600)
-        ]
-        
-        for x, y in common_positions:
-            tap(x, y, delay=2)
-            xml = get_screen_xml()
-            if "Installing" in xml or "Pending" in xml or "Open" in xml:
-                return True
-        
-        return False
-        
-    except Exception as e:
-        logger.warning(f"Install button click failed: {e}")
-        return False
-
-
-def wait_for_installation(package_name, timeout=None):
-    """Wait for app installation to complete"""
-    if timeout is None:
-        timeout = INSTALL_TIMEOUT
-    
-    logger.info(f"Waiting for {package_name} installation...")
-    start_time = time.time()
-    
-    while time.time() - start_time < timeout:
-        if check_app_installed(package_name):
-            logger.info(f"{package_name} installed!")
-            return True
-        
-        # Check UI for progress
-        xml = get_screen_xml()
-        if "Open" in xml and check_app_installed(package_name):
-            return True
-        
-        time.sleep(5)
-    
-    return False
-
-
-def install_from_play_store(package_name):
-    """Install app from Play Store automatically"""
-    # Check if already installed
-    if check_app_installed(package_name):
-        logger.info(f"{package_name} already installed")
-        return "already_installed"
-    
-    logger.info(f"Installing {package_name} from Play Store...")
-    
-    # Ensure signed in
-    ensure_play_store_login()
-    
-    # Open Play Store page
-    if not open_play_store(package_name):
-        return "failed"
-    
-    time.sleep(3)
-    
-    # Check if app exists
-    xml = get_screen_xml()
-    if "We couldn't find" in xml or "not found" in xml.lower() or "isn't available" in xml:
-        logger.warning(f"App {package_name} not found on Play Store")
-        press_key("KEYCODE_HOME")
-        return "not_found"
-    
-    # Click Install
-    if click_install_button():
-        # Wait for installation
-        if wait_for_installation(package_name):
-            press_key("KEYCODE_HOME")
-            return "installed"
-    
-    # Final check
-    time.sleep(5)
-    if check_app_installed(package_name):
-        press_key("KEYCODE_HOME")
-        return "installed"
-    
-    press_key("KEYCODE_HOME")
-    return "failed"
 
 
 # ============================================
@@ -633,245 +638,178 @@ def install_from_play_store(package_name):
 
 @app.route("/health", methods=["GET"])
 def health():
-    """Health check"""
     try:
         output = run_adb(["devices"], retries=1, timeout=10, check=False)
-        devices = [
-            line for line in output.splitlines()
-            if "device" in line and "List" not in line
-        ]
-        
-        device_ready = len(devices) > 0
+        devices = [l for l in output.splitlines() if "device" in l and "List" not in l and "offline" not in l]
+        ok = len(devices) > 0
         
         return jsonify({
-            "status": "healthy" if device_ready else "no_device",
+            "status": "healthy" if ok else "no_device",
             "device_id": DEVICE_ID,
             "devices_count": len(devices),
             "auto_install": True,
             "auto_cleanup": AUTO_CLEANUP,
             "google_configured": bool(GOOGLE_EMAIL),
             "timestamp": datetime.now(timezone.utc).isoformat()
-        }), 200 if device_ready else 503
-        
+        }), 200 if ok else 503
     except Exception as e:
         return jsonify({"status": "unhealthy", "error": str(e)}), 503
 
 
-@app.route("/login_google", methods=["POST"])
-def api_login_google():
-    """Trigger Google login"""
-    data = request.get_json() or {}
-    email = data.get("email", GOOGLE_EMAIL)
-    password = data.get("password", GOOGLE_PASSWORD)
-    
-    if not email or not password:
-        return jsonify({"error": "Email and password required"}), 400
-    
-    success = google_login(email, password)
-    
-    return jsonify({
-        "success": success,
-        "message": "Login successful" if success else "Login may have failed"
-    }), 200 if success else 500
-
-
-@app.route("/check_login", methods=["GET"])
-def api_check_login():
-    """Check if Play Store is signed in"""
-    signed_in = check_play_store_signed_in()
-    press_key("KEYCODE_HOME")
-    
-    return jsonify({
-        "signed_in": signed_in
-    }), 200
-
-
 @app.route("/extract_apk", methods=["POST"])
 def extract_apk():
-    """Extract APK with auto-install"""
     data = request.get_json() or {}
     package = data.get("package", "").strip()
     
-    # Validate
     valid, result = validate_package_name(package)
     if not valid:
         return jsonify({"error": result}), 400
     
     package = result
-    logger.info(f"Extraction request for {package}")
+    logger.info(f"=== Extraction request: {package} ===")
     
     try:
-        # Wait for device
         wait_for_device()
         
-        # Check/install app
+        # Auto-install if needed
         if not check_app_installed(package):
             logger.info(f"{package} not installed, auto-installing...")
             
-            install_result = install_from_play_store(package)
+            result = install_from_play_store(package)
             
-            if install_result == "not_found":
+            if result == "not_found":
                 return jsonify({
                     "error": "App not found on Play Store",
                     "package": package
                 }), 404
             
-            elif install_result == "failed":
+            if result == "failed":
                 return jsonify({
-                    "error": "Failed to install app",
-                    "package": package,
-                    "hint": "Play Store may require sign-in"
+                    "error": "Failed to install app. Try again or install manually.",
+                    "package": package
                 }), 500
         
         # Get APK paths
         apk_paths = get_apk_paths(package)
-        
         if not apk_paths:
-            return jsonify({
-                "error": "No APK files found",
-                "package": package
-            }), 404
+            return jsonify({"error": "No APK found", "package": package}), 404
         
-        # Create directory
-        package_dir = os.path.join(DATA_DIR, sanitize_filename(package))
-        os.makedirs(package_dir, exist_ok=True)
+        # Extract
+        pkg_dir = os.path.join(DATA_DIR, sanitize_filename(package))
+        os.makedirs(pkg_dir, exist_ok=True)
         
-        file_info = []
-        
-        # Pull APKs
-        for i, apk_path in enumerate(apk_paths):
+        files = []
+        for i, path in enumerate(apk_paths):
             try:
-                if i == 0:
-                    filename = "base.apk"
-                else:
-                    original_name = os.path.basename(apk_path)
-                    if "split" in original_name or "config" in original_name:
-                        filename = sanitize_filename(original_name)
-                    else:
-                        filename = f"split_{i}.apk"
+                fname = "base.apk" if i == 0 else f"split_{i}.apk"
+                if i > 0:
+                    orig = os.path.basename(path)
+                    if "split" in orig or "config" in orig:
+                        fname = sanitize_filename(orig)
                 
-                local_path = os.path.join(package_dir, filename)
+                local = os.path.join(pkg_dir, fname)
+                run_adb(["pull", path, local], timeout=EXTRACTION_TIMEOUT)
                 
-                logger.info(f"Pulling {apk_path}")
-                run_adb(["pull", apk_path, local_path], timeout=EXTRACTION_TIMEOUT)
-                
-                if os.path.exists(local_path):
-                    file_size = os.path.getsize(local_path)
-                    file_hash = calculate_hash(local_path)
-                    
-                    file_info.append({
-                        "filename": filename,
-                        "path": f"{package}/{filename}",
-                        "size": file_size,
-                        "size_human": format_bytes(file_size),
-                        "hash": file_hash,
+                if os.path.exists(local):
+                    size = os.path.getsize(local)
+                    files.append({
+                        "filename": fname,
+                        "path": f"{package}/{fname}",
+                        "size": size,
+                        "size_human": format_bytes(size),
+                        "hash": calculate_hash(local),
                         "hash_algorithm": "SHA-256"
                     })
-                    
             except Exception as e:
-                logger.error(f"Failed to pull {apk_path}: {e}")
+                logger.error(f"Pull failed: {e}")
         
-        if not file_info:
-            return jsonify({"error": "Failed to extract APKs"}), 500
+        if not files:
+            return jsonify({"error": "Extraction failed"}), 500
         
-        # Schedule cleanup
         if AUTO_CLEANUP:
             schedule_cleanup(package)
         
         return jsonify({
             "status": "completed",
             "package": package,
-            "files": file_info,
-            "total_files": len(file_info),
-            "total_size": sum(f["size"] for f in file_info),
-            "total_size_human": format_bytes(sum(f["size"] for f in file_info)),
+            "files": files,
+            "total_files": len(files),
+            "total_size": sum(f["size"] for f in files),
+            "total_size_human": format_bytes(sum(f["size"] for f in files)),
             "auto_cleanup": AUTO_CLEANUP,
-            "cleanup_delay": f"{CLEANUP_DELAY // 60} minutes" if AUTO_CLEANUP else "disabled"
+            "cleanup_delay": f"{CLEANUP_DELAY // 60} min"
         }), 200
         
     except Exception as e:
-        logger.error(f"Extraction failed: {e}")
+        logger.error(f"Error: {e}")
         return jsonify({"error": str(e)}), 500
 
 
 @app.route("/download_apk/<package>/<filename>")
 def download_apk(package, filename):
-    """Download APK"""
-    valid, result = validate_package_name(package)
+    valid, package = validate_package_name(package)
     if not valid:
-        return jsonify({"error": "Invalid package name"}), 400
+        return jsonify({"error": "Invalid package"}), 400
     
-    package = result
     filename = sanitize_filename(filename)
-    
     if not filename.endswith('.apk'):
-        return jsonify({"error": "Invalid filename"}), 400
+        return jsonify({"error": "Invalid file"}), 400
     
-    full_path = os.path.join(DATA_DIR, package, filename)
+    path = os.path.join(DATA_DIR, package, filename)
+    real_path = os.path.realpath(path)
     
-    real_path = os.path.realpath(full_path)
-    real_data_dir = os.path.realpath(DATA_DIR)
-    
-    if not real_path.startswith(real_data_dir):
+    if not real_path.startswith(os.path.realpath(DATA_DIR)):
         return jsonify({"error": "Invalid path"}), 400
     
-    if os.path.exists(full_path):
-        return send_file(
-            full_path,
-            as_attachment=True,
-            download_name=f"{package}_{filename}",
-            mimetype='application/vnd.android.package-archive'
-        )
-    else:
-        return jsonify({"error": "File not found"}), 404
+    if os.path.exists(path):
+        return send_file(path, as_attachment=True,
+                        download_name=f"{package}_{filename}",
+                        mimetype='application/vnd.android.package-archive')
+    return jsonify({"error": "Not found"}), 404
 
 
 @app.route("/list_packages", methods=["GET"])
 def list_packages():
-    """List extracted packages"""
     packages = []
-    
     if os.path.exists(DATA_DIR):
-        for pkg_name in os.listdir(DATA_DIR):
-            pkg_path = os.path.join(DATA_DIR, pkg_name)
-            
+        for name in os.listdir(DATA_DIR):
+            pkg_path = os.path.join(DATA_DIR, name)
             if os.path.isdir(pkg_path):
-                files = []
-                total_size = 0
-                
-                for filename in os.listdir(pkg_path):
-                    if filename.endswith('.apk'):
-                        file_path = os.path.join(pkg_path, filename)
-                        file_size = os.path.getsize(file_path)
-                        total_size += file_size
-                        files.append({
-                            "filename": filename,
-                            "size": file_size,
-                            "size_human": format_bytes(file_size)
-                        })
-                
+                files = [f for f in os.listdir(pkg_path) if f.endswith('.apk')]
                 if files:
-                    packages.append({
-                        "package": pkg_name,
-                        "files": files,
-                        "total_size": total_size
-                    })
+                    total = sum(os.path.getsize(os.path.join(pkg_path, f)) for f in files)
+                    packages.append({"package": name, "files": files, "total_size": total})
+    return jsonify({"packages": packages}), 200
+
+
+@app.route("/login_google", methods=["POST"])
+def api_login():
+    data = request.get_json() or {}
+    email = data.get("email", GOOGLE_EMAIL)
+    password = data.get("password", GOOGLE_PASSWORD)
     
-    return jsonify({"packages": packages, "total_packages": len(packages)}), 200
+    if not email or not password:
+        return jsonify({"error": "Credentials required"}), 400
+    
+    ok = google_login(email, password)
+    return jsonify({"success": ok}), 200 if ok else 500
+
+
+@app.route("/check_login", methods=["GET"])
+def api_check_login():
+    signed_in = check_play_store_signed_in()
+    press_home()
+    return jsonify({"signed_in": signed_in}), 200
 
 
 @app.route("/cleanup/<package>", methods=["POST"])
 def manual_cleanup(package):
-    """Manually cleanup a package"""
-    valid, result = validate_package_name(package)
+    valid, package = validate_package_name(package)
     if not valid:
-        return jsonify({"error": "Invalid package name"}), 400
-    
-    package = result
+        return jsonify({"error": "Invalid package"}), 400
     uninstall_app(package)
     cleanup_package_files(package)
-    
-    return jsonify({"message": f"Cleaned up {package}"}), 200
+    return jsonify({"message": f"Cleaned {package}"}), 200
 
 
 # ============================================
@@ -880,24 +818,19 @@ def manual_cleanup(package):
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("APK Extractor - Automated Device Agent")
+    print("APK Extractor - Device Agent")
     print("=" * 60)
-    print(f"Device ID: {DEVICE_ID}")
-    print(f"Auto-Install: Enabled")
-    print(f"Auto-Cleanup: {AUTO_CLEANUP} ({CLEANUP_DELAY}s delay)")
-    print(f"Google Account: {'Configured' if GOOGLE_EMAIL else 'Not configured'}")
+    print(f"Device: {DEVICE_ID}")
+    print(f"Auto-Install: Enabled (IMPROVED)")
+    print(f"Auto-Cleanup: {AUTO_CLEANUP} ({CLEANUP_DELAY}s)")
+    print(f"Google: {'Configured' if GOOGLE_EMAIL else 'Not set'}")
     print("=" * 60)
     
-    # Check device
     try:
-        output = subprocess.run(["adb", "devices"], capture_output=True, text=True, timeout=10)
-        print(output.stdout)
-        
-        # Configure device for 24/7 operation
+        subprocess.run(["adb", "devices"], capture_output=True, timeout=10)
         keep_device_awake()
-        
-    except Exception as e:
-        print(f"Warning: {e}")
+    except:
+        pass
     
-    print("Starting server on port 5001...")
+    print("Starting on port 5001...")
     app.run(host="0.0.0.0", port=5001)
