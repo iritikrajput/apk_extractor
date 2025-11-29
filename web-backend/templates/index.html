@@ -17,24 +17,20 @@
             --accent-purple: #9b5de5;
             --accent-pink: #f15bb5;
             --accent-green: #00ff88;
+            --accent-yellow: #fee440;
             --text-primary: #ffffff;
             --text-secondary: #a0a0b0;
             --text-muted: #606070;
             --border-color: #2a2a3a;
             --gradient-1: linear-gradient(135deg, #00f5d4 0%, #9b5de5 50%, #f15bb5 100%);
             --gradient-success: linear-gradient(135deg, #00f5d4 0%, #00ff88 100%);
-            --glow-cyan: 0 0 40px rgba(0, 245, 212, 0.3);
             --radius-sm: 8px;
             --radius-md: 14px;
             --radius-lg: 20px;
             --radius-xl: 24px;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'Outfit', sans-serif;
@@ -44,7 +40,6 @@
             overflow-x: hidden;
         }
 
-        /* Background Effects */
         .bg-effects {
             position: fixed;
             inset: 0;
@@ -70,19 +65,9 @@
             opacity: 0.3;
         }
 
-        .bg-glow-1 {
-            background: var(--accent-cyan);
-            top: -400px;
-            right: -200px;
-        }
+        .bg-glow-1 { background: var(--accent-cyan); top: -400px; right: -200px; }
+        .bg-glow-2 { background: var(--accent-purple); bottom: -400px; left: -200px; }
 
-        .bg-glow-2 {
-            background: var(--accent-purple);
-            bottom: -400px;
-            left: -200px;
-        }
-
-        /* Header */
         header {
             position: relative;
             z-index: 100;
@@ -124,7 +109,6 @@
             background: var(--gradient-1);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-clip: text;
         }
 
         .status-badge {
@@ -136,7 +120,6 @@
             border: 1px solid var(--border-color);
             border-radius: var(--radius-md);
             font-size: 13px;
-            font-weight: 500;
         }
 
         .status-dot {
@@ -146,17 +129,9 @@
             background: var(--text-muted);
         }
 
-        .status-dot.healthy {
-            background: var(--accent-green);
-            box-shadow: 0 0 10px var(--accent-green);
-        }
+        .status-dot.healthy { background: var(--accent-green); box-shadow: 0 0 10px var(--accent-green); }
+        .status-dot.unhealthy { background: var(--accent-pink); box-shadow: 0 0 10px var(--accent-pink); }
 
-        .status-dot.unhealthy {
-            background: var(--accent-pink);
-            box-shadow: 0 0 10px var(--accent-pink);
-        }
-
-        /* Main Content */
         main {
             position: relative;
             z-index: 10;
@@ -165,7 +140,6 @@
             padding: 60px 32px;
         }
 
-        /* Hero Section */
         .hero {
             text-align: center;
             margin-bottom: 50px;
@@ -175,14 +149,12 @@
             font-size: 42px;
             font-weight: 700;
             margin-bottom: 16px;
-            line-height: 1.2;
         }
 
         .hero h1 span {
             background: var(--gradient-1);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-clip: text;
         }
 
         .hero p {
@@ -192,7 +164,28 @@
             margin: 0 auto;
         }
 
-        /* Extraction Card */
+        .features {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+
+        .feature-tag {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .feature-tag .icon { font-size: 14px; }
+
         .extraction-card {
             background: var(--bg-card);
             backdrop-filter: blur(20px);
@@ -202,9 +195,7 @@
             margin-bottom: 40px;
         }
 
-        .input-section {
-            margin-bottom: 24px;
-        }
+        .input-section { margin-bottom: 24px; }
 
         .input-label {
             display: block;
@@ -237,9 +228,7 @@
             box-shadow: 0 0 0 4px rgba(0, 245, 212, 0.1);
         }
 
-        .package-input::placeholder {
-            color: var(--text-muted);
-        }
+        .package-input::placeholder { color: var(--text-muted); }
 
         .extract-btn {
             padding: 18px 40px;
@@ -265,7 +254,6 @@
             cursor: not-allowed;
         }
 
-        /* Example packages */
         .examples {
             margin-top: 16px;
             font-size: 13px;
@@ -275,24 +263,19 @@
         .examples span {
             color: var(--text-secondary);
             cursor: pointer;
-            transition: color 0.2s;
             font-family: 'JetBrains Mono', monospace;
+            transition: color 0.2s;
         }
 
-        .examples span:hover {
-            color: var(--accent-cyan);
-        }
+        .examples span:hover { color: var(--accent-cyan); }
 
-        /* Loading State */
         .loading-section {
             display: none;
             text-align: center;
             padding: 40px 20px;
         }
 
-        .loading-section.active {
-            display: block;
-        }
+        .loading-section.active { display: block; }
 
         .spinner-ring {
             width: 64px;
@@ -320,13 +303,12 @@
             animation: spin 1.5s linear infinite reverse;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         .loading-text {
             color: var(--text-secondary);
             font-size: 16px;
+            margin-bottom: 8px;
         }
 
         .loading-text strong {
@@ -334,16 +316,20 @@
             font-family: 'JetBrains Mono', monospace;
         }
 
-        .queue-info {
-            margin-top: 16px;
-            padding: 16px;
-            background: var(--bg-tertiary);
-            border-radius: var(--radius-md);
+        .loading-status {
             font-size: 14px;
-            color: var(--text-secondary);
+            color: var(--text-muted);
+            padding: 12px 20px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+            display: inline-block;
         }
 
-        /* Error Message */
+        .loading-status.installing {
+            color: var(--accent-yellow);
+            border: 1px solid rgba(254, 228, 64, 0.3);
+        }
+
         .error-section {
             display: none;
             padding: 20px 24px;
@@ -359,10 +345,7 @@
             gap: 14px;
         }
 
-        .error-icon {
-            font-size: 20px;
-            flex-shrink: 0;
-        }
+        .error-icon { font-size: 20px; }
 
         .error-content h4 {
             color: var(--accent-pink);
@@ -374,19 +357,15 @@
         .error-content p {
             color: var(--text-secondary);
             font-size: 14px;
-            line-height: 1.5;
         }
 
-        /* Results Section */
         .results-section {
             display: none;
             margin-top: 32px;
             animation: slideUp 0.4s ease;
         }
 
-        .results-section.active {
-            display: block;
-        }
+        .results-section.active { display: block; }
 
         @keyframes slideUp {
             from { opacity: 0; transform: translateY(20px); }
@@ -398,11 +377,12 @@
             align-items: center;
             justify-content: space-between;
             margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
         }
 
         .results-header h3 {
             font-size: 18px;
-            font-weight: 600;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -427,10 +407,16 @@
             font-family: 'JetBrains Mono', monospace;
         }
 
-        .file-grid {
-            display: grid;
-            gap: 16px;
+        .cleanup-notice {
+            font-size: 12px;
+            color: var(--accent-yellow);
+            background: rgba(254, 228, 64, 0.1);
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 16px;
         }
+
+        .file-grid { display: grid; gap: 16px; }
 
         .file-card {
             background: var(--bg-tertiary);
@@ -457,19 +443,14 @@
             align-items: center;
             justify-content: center;
             font-size: 26px;
-            flex-shrink: 0;
         }
 
-        .file-info {
-            flex: 1;
-            min-width: 0;
-        }
+        .file-info { flex: 1; min-width: 0; }
 
         .file-name {
             font-family: 'JetBrains Mono', monospace;
             font-size: 15px;
             font-weight: 500;
-            color: var(--text-primary);
             margin-bottom: 8px;
         }
 
@@ -491,12 +472,9 @@
             font-family: 'JetBrains Mono', monospace;
             color: var(--text-muted);
             cursor: pointer;
-            transition: color 0.2s;
         }
 
-        .hash-value:hover {
-            color: var(--accent-cyan);
-        }
+        .hash-value:hover { color: var(--accent-cyan); }
 
         .download-btn {
             padding: 12px 24px;
@@ -512,7 +490,6 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            flex-shrink: 0;
         }
 
         .download-btn:hover {
@@ -520,7 +497,6 @@
             box-shadow: 0 8px 20px -8px rgba(0, 255, 136, 0.4);
         }
 
-        /* Footer */
         footer {
             text-align: center;
             padding: 40px 32px;
@@ -528,7 +504,6 @@
             font-size: 13px;
         }
 
-        /* Toast Notifications */
         .toast {
             position: fixed;
             bottom: 32px;
@@ -545,55 +520,19 @@
             transition: all 0.3s ease;
         }
 
-        .toast.show {
-            transform: translateY(0);
-            opacity: 1;
-        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.success { border-color: var(--accent-green); }
 
-        .toast.success {
-            border-color: var(--accent-green);
-        }
-
-        /* Responsive */
         @media (max-width: 768px) {
-            .header-content {
-                padding: 0 16px;
-            }
-
-            main {
-                padding: 40px 16px;
-            }
-
-            .hero h1 {
-                font-size: 28px;
-            }
-
-            .extraction-card {
-                padding: 24px;
-            }
-
-            .input-group {
-                flex-direction: column;
-            }
-
-            .extract-btn {
-                width: 100%;
-            }
-
-            .file-card {
-                flex-direction: column;
-                align-items: stretch;
-                text-align: center;
-            }
-
-            .file-info {
-                text-align: left;
-            }
-
-            .download-btn {
-                width: 100%;
-                justify-content: center;
-            }
+            main { padding: 40px 16px; }
+            .hero h1 { font-size: 28px; }
+            .extraction-card { padding: 24px; }
+            .input-group { flex-direction: column; }
+            .extract-btn { width: 100%; }
+            .file-card { flex-direction: column; text-align: center; }
+            .file-info { text-align: left; }
+            .download-btn { width: 100%; justify-content: center; }
+            .features { gap: 12px; }
         }
     </style>
 </head>
@@ -619,8 +558,27 @@
 
     <main>
         <section class="hero">
-            <h1>Download <span>APKs</span> from Play Store</h1>
-            <p>Enter a package name and get the official APK files directly extracted from Google Play Store.</p>
+            <h1>Download <span>Any APK</span> from Play Store</h1>
+            <p>Enter a package name and get the official APK automatically extracted from Google Play Store.</p>
+            
+            <div class="features">
+                <div class="feature-tag">
+                    <span class="icon">🤖</span>
+                    Auto-Install
+                </div>
+                <div class="feature-tag">
+                    <span class="icon">📱</span>
+                    Official APKs
+                </div>
+                <div class="feature-tag">
+                    <span class="icon">🔐</span>
+                    SHA-256 Verified
+                </div>
+                <div class="feature-tag">
+                    <span class="icon">🧹</span>
+                    Auto-Cleanup
+                </div>
+            </div>
         </section>
 
         <div class="extraction-card">
@@ -643,17 +601,17 @@
                     Try: 
                     <span onclick="setPackage('com.whatsapp')">com.whatsapp</span> • 
                     <span onclick="setPackage('com.instagram.android')">com.instagram.android</span> • 
-                    <span onclick="setPackage('com.twitter.android')">com.twitter.android</span>
+                    <span onclick="setPackage('com.spotify.music')">com.spotify.music</span>
                 </div>
             </div>
 
             <div class="loading-section" id="loadingSection">
                 <div class="spinner-ring"></div>
                 <p class="loading-text">
-                    Extracting <strong id="loadingPackage">...</strong>
+                    Processing <strong id="loadingPackage">...</strong>
                 </p>
-                <div class="queue-info" id="queueInfo" style="display: none;">
-                    <span id="queueStatus">Position in queue: 1</span>
+                <div class="loading-status" id="loadingStatus">
+                    Checking installation status...
                 </div>
             </div>
 
@@ -670,13 +628,16 @@
                     <h3>Extraction Complete</h3>
                     <span class="results-meta" id="resultsMeta"></span>
                 </div>
+                <div class="cleanup-notice" id="cleanupNotice">
+                    ⏱️ App will be auto-removed from server in 5 minutes to free memory
+                </div>
                 <div class="file-grid" id="fileGrid"></div>
             </div>
         </div>
     </main>
 
     <footer>
-        <p>APK Extractor • Extract official APKs for security analysis</p>
+        <p>APK Extractor • Automated APK extraction from Play Store</p>
     </footer>
 
     <div class="toast" id="toast"></div>
@@ -686,7 +647,6 @@
         let currentJobId = null;
         let pollInterval = null;
 
-        // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             checkHealth();
             document.getElementById('packageInput').addEventListener('keypress', (e) => {
@@ -694,13 +654,11 @@
             });
         });
 
-        // Set package from examples
         function setPackage(pkg) {
             document.getElementById('packageInput').value = pkg;
             document.getElementById('packageInput').focus();
         }
 
-        // Health Check
         async function checkHealth() {
             try {
                 const response = await fetch('/api/health');
@@ -711,12 +669,10 @@
                 
                 if (data.status === 'healthy' || data.orchestrator === 'healthy') {
                     statusDot.className = 'status-dot healthy';
-                    if (MODE === 'orchestrator' && data.containers) {
-                        const available = data.containers.filter(c => !c.busy && c.status === 'healthy').length;
-                        statusText.textContent = `${available}/${data.containers.length} Devices`;
-                    } else {
-                        statusText.textContent = 'Device Ready';
-                    }
+                    statusText.textContent = 'Ready';
+                } else if (data.status === 'no_device') {
+                    statusDot.className = 'status-dot unhealthy';
+                    statusText.textContent = 'No Device';
                 } else {
                     statusDot.className = 'status-dot unhealthy';
                     statusText.textContent = 'Offline';
@@ -727,7 +683,6 @@
             }
         }
 
-        // Format bytes
         function formatBytes(bytes) {
             if (!bytes || bytes === 0) return '0 B';
             const k = 1024;
@@ -736,7 +691,6 @@
             return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
         }
 
-        // Start extraction
         async function startExtraction() {
             const packageName = document.getElementById('packageInput').value.trim();
             
@@ -745,10 +699,10 @@
                 return;
             }
 
-            // Reset UI
             hideError();
             hideResults();
             showLoading(packageName);
+            updateLoadingStatus('Checking if app is installed...');
             setButtonState(true);
 
             try {
@@ -762,20 +716,17 @@
 
                 if (response.ok) {
                     if (MODE === 'orchestrator' && data.job_id) {
-                        // Async mode - start polling
                         currentJobId = data.job_id;
-                        updateQueueInfo(data.queue_position || 0);
                         startPolling();
                     } else if (data.files) {
-                        // Sync mode - show results immediately
                         hideLoading();
                         showResults(data);
-                        showToast('Extraction complete!', 'success');
+                        showToast('APK extracted successfully!', 'success');
                     } else {
                         throw new Error(data.error || 'Unknown error');
                     }
                 } else {
-                    throw new Error(data.error || `Request failed (${response.status})`);
+                    throw new Error(data.error || data.hint || `Request failed (${response.status})`);
                 }
             } catch (error) {
                 hideLoading();
@@ -787,7 +738,6 @@
             }
         }
 
-        // Polling for orchestrator mode
         function startPolling() {
             if (pollInterval) clearInterval(pollInterval);
             
@@ -805,15 +755,13 @@
                         stopPolling();
                         hideLoading();
                         showResults(data.data);
-                        showToast('Extraction complete!', 'success');
+                        showToast('APK extracted successfully!', 'success');
                         setButtonState(false);
                     } else if (data.status === 'failed') {
                         stopPolling();
                         hideLoading();
                         showError(data.error || 'Extraction failed');
                         setButtonState(false);
-                    } else {
-                        updateQueueInfo(data.queue_position || 'Processing...');
                     }
                 } catch (error) {
                     console.error('Polling error:', error);
@@ -829,23 +777,15 @@
             currentJobId = null;
         }
 
-        function updateQueueInfo(position) {
-            const queueInfo = document.getElementById('queueInfo');
-            const queueStatus = document.getElementById('queueStatus');
-            
-            queueInfo.style.display = 'block';
-            if (typeof position === 'number' && position > 0) {
-                queueStatus.textContent = `Position in queue: ${position}`;
-            } else {
-                queueStatus.textContent = 'Processing extraction...';
-            }
+        function updateLoadingStatus(text, isInstalling = false) {
+            const status = document.getElementById('loadingStatus');
+            status.textContent = text;
+            status.className = 'loading-status' + (isInstalling ? ' installing' : '');
         }
 
-        // UI Helpers
         function showLoading(packageName) {
             document.getElementById('loadingSection').classList.add('active');
             document.getElementById('loadingPackage').textContent = packageName;
-            document.getElementById('queueInfo').style.display = 'none';
         }
 
         function hideLoading() {
@@ -865,9 +805,18 @@
             const resultsSection = document.getElementById('resultsSection');
             const resultsMeta = document.getElementById('resultsMeta');
             const fileGrid = document.getElementById('fileGrid');
+            const cleanupNotice = document.getElementById('cleanupNotice');
 
             const totalSize = data.total_size || data.files.reduce((sum, f) => sum + f.size, 0);
             resultsMeta.textContent = `${data.total_files || data.files.length} file(s) • ${data.total_size_human || formatBytes(totalSize)}`;
+
+            // Show/hide cleanup notice
+            if (data.auto_cleanup) {
+                cleanupNotice.style.display = 'block';
+                cleanupNotice.textContent = `⏱️ App will be auto-removed from server in ${data.cleanup_delay || '5 minutes'} to free memory`;
+            } else {
+                cleanupNotice.style.display = 'none';
+            }
 
             fileGrid.innerHTML = data.files.map(file => `
                 <div class="file-card">
@@ -876,7 +825,7 @@
                         <div class="file-name">${file.filename}</div>
                         <div class="file-meta">
                             <span>📦 ${file.size_human || formatBytes(file.size)}</span>
-                            <span class="hash-value" onclick="copyHash('${file.hash}')" title="Click to copy full hash">
+                            <span class="hash-value" onclick="copyHash('${file.hash}')" title="Click to copy">
                                 🔐 ${file.hash.substring(0, 12)}...
                             </span>
                         </div>
@@ -897,7 +846,7 @@
         function setButtonState(disabled) {
             const btn = document.getElementById('extractBtn');
             btn.disabled = disabled;
-            btn.textContent = disabled ? 'Extracting...' : 'Extract APK';
+            btn.textContent = disabled ? 'Processing...' : 'Extract APK';
         }
 
         function downloadFile(packageName, filename) {
@@ -914,12 +863,10 @@
             const toast = document.getElementById('toast');
             toast.textContent = message;
             toast.className = 'toast ' + type;
-            
             setTimeout(() => toast.classList.add('show'), 10);
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
-        // Refresh health status periodically
         setInterval(checkHealth, 30000);
     </script>
 </body>
