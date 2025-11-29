@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APK Extractor - Play Store</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 { color: #333; margin-bottom: 10px; }
+        .subtitle { color: #666; margin-bottom: 30px; }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .status.healthy { background: #d4edda; color: #155724; display: block; }
+        .status.error { background: #f8d7da; color: #721c24; display: block; }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover { background: #5568d3; }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .results {
+            display: none;
+            margin-top: 30px;
+        }
+        .file-list {
+            list-style: none;
+        }
+        .file-item {
+            background: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .file-info {
+            flex: 1;
+        }
+        .file-name {
+            font-weight: bold;
+            color: #333;
+        }
+        .file-meta {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .download-btn {
+            background: #28a745;
+            padding: 8px 20px;
+            font-size: 14px;
+        }
+        .download-btn:hover { background: #218838; }
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 APK Extractor</h1>
+        <p class="subtitle">Extract official APKs from Google Play Store</p>
+        
+        <div id="deviceStatus" class="status"></div>
+        
+        <div class="form-group">
+            <label for="packageName">Package Name or Play Store URL</label>
+            <input 
+                type="text" 
+                id="packageName" 
+                placeholder="e.g., com.whatsapp or https://play.google.com/store/apps/details?id=com.whatsapp"
+                autocomplete="off"
+            >
+        </div>
+        
+        <button id="extractBtn" onclick="extractAPK()">Extract APK</button>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Extracting APK... This may take a minute.</p>
+        </div>
+        
+        <div class="error-message" id="errorMessage"></div>
+        
+        <div class="results" id="results">
+            <h2>📦 Extracted Files</h2>
+            <ul class="file-list" id="fileList"></ul>
+        </div>
+    </div>
+    
+    <script>
+        // Check device status on load
+        window.addEventListener('load', checkHealth);
+        
+        async function checkHealth() {
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                const statusDiv = document.getElementById('deviceStatus');
+                
+                if (data.status === 'healthy') {
+                    statusDiv.className = 'status healthy';
+                    statusDiv.textContent = `✓ Device agent online (${data.devices} device(s) connected)`;
+                } else {
+                    statusDiv.className = 'status error';
+                    statusDiv.textContent = '✗ Device agent offline or no devices connected';
+                }
+            } catch (error) {
+                const statusDiv = document.getElementById('deviceStatus');
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '✗ Cannot reach device agent';
+            }
+        }
+        
+        function extractPackageName(input) {
+            // Extract package name from Play Store URL or use as-is
+            const match = input.match(/id=([a-zA-Z0-9_.]+)/);
+            return match ? match[1] : input.trim();
+        }
+        
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+        
+        async function extractAPK() {
+            const input = document.getElementById('packageName').value;
+            const packageName = extractPackageName(input);
+            
+            if (!packageName) {
+                showError('Please enter a package name or Play Store URL');
+                return;
+            }
+            
+            // UI state
+            document.getElementById('extractBtn').disabled = true;
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('errorMessage').style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/extract', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ package: packageName })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayResults(data);
+                } else {
+                    showError(data.error || 'Extraction failed');
+                }
+            } catch (error) {
+                showError('Network error: ' + error.message);
+            } finally {
+                document.getElementById('extractBtn').disabled = false;
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+        
+        function displayResults(data) {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = '';
+            
+            data.files.forEach(file => {
+                const li = document.createElement('li');
+                li.className = 'file-item';
+                li.innerHTML = `
+                    <div class="file-info">
+                        <div class="file-name">${file.filename}</div>
+                        <div class="file-meta">
+                            Size: ${formatBytes(file.size)} | 
+                            Hash: ${file.hash.substring(0, 16)}...
+                        </div>
+                    </div>
+                    <button class="download-btn" onclick="downloadFile('${data.package}', '${file.filename}')">
+                        Download
+                    </button>
+                `;
+                fileList.appendChild(li);
+            });
+            
+            document.getElementById('results').style.display = 'block';
+        }
+        
+        function downloadFile(packageName, filename) {
+            window.location.href = `/api/download/${packageName}/${filename}`;
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        
+        // Allow Enter key to submit
+        document.getElementById('packageName').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') extractAPK();
+        });
+    </script>
+</body>
+</html>

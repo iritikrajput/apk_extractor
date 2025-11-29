@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  # Android Device Containers
+  android-1:
+    build: ./docker-android
+    container_name: android-device-1
+    privileged: true
+    ports:
+      - "5001:5001"
+    environment:
+      - DEVICE=emulator-5554
+    volumes:
+      - apk-storage:/app/pulls
+    shm_size: 2gb
+    restart: unless-stopped
+
+  android-2:
+    build: ./docker-android
+    container_name: android-device-2
+    privileged: true
+    ports:
+      - "5002:5001"
+    environment:
+      - DEVICE=emulator-5554
+    volumes:
+      - apk-storage:/app/pulls
+    shm_size: 2gb
+    restart: unless-stopped
+
+  android-3:
+    build: ./docker-android
+    container_name: android-device-3
+    privileged: true
+    ports:
+      - "5003:5001"
+    environment:
+      - DEVICE=emulator-5554
+    volumes:
+      - apk-storage:/app/pulls
+    shm_size: 2gb
+    restart: unless-stopped
+
+  # Orchestrator
+  orchestrator:
+    build: ./orchestrator
+    container_name: orchestrator
+    ports:
+      - "8001:8001"
+    environment:
+      - CONTAINERS=android-1:5001,android-2:5001,android-3:5001
+    depends_on:
+      - android-1
+      - android-2
+      - android-3
+    restart: unless-stopped
+
+  # Web Backend
+  web-backend:
+    build: ./web-backend
+    container_name: web-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - USE_ORCHESTRATOR=true
+      - ORCHESTRATOR_URL=http://orchestrator:8001
+    depends_on:
+      - orchestrator
+    restart: unless-stopped
+
+volumes:
+  apk-storage:

@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  android-1:
+    build: .
+    container_name: android-device-1
+    privileged: true
+    ports:
+      - "5001:5001"
+      - "5555:5555"
+    environment:
+      - DEVICE=emulator-5554
+      - EMULATOR_DEVICE=Samsung Galaxy S10
+      - WEB_VNC=false
+    volumes:
+      - ./pulls:/app/pulls
+    shm_size: 2gb
+    restart: unless-stopped
+
+  android-2:
+    build: .
+    container_name: android-device-2
+    privileged: true
+    ports:
+      - "5002:5001"
+      - "5556:5555"
+    environment:
+      - DEVICE=emulator-5554
+      - EMULATOR_DEVICE=Samsung Galaxy S10
+      - WEB_VNC=false
+    volumes:
+      - ./pulls:/app/pulls
+    shm_size: 2gb
+    restart: unless-stopped
+
+  android-3:
+    build: .
+    container_name: android-device-3
+    privileged: true
+    ports:
+      - "5003:5001"
+      - "5557:5555"
+    environment:
+      - DEVICE=emulator-5554
+      - EMULATOR_DEVICE=Samsung Galaxy S10
+      - WEB_VNC=false
+    volumes:
+      - ./pulls:/app/pulls
+    shm_size: 2gb
+    restart: unless-stopped
