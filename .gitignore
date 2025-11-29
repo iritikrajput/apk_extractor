@@ -1,26 +1,78 @@
+# APK Extractor - Git Ignore
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 venv/
-env/
 ENV/
+env/
+.venv/
 
-# APK files
-device-agent/pulls/
+# Logs
+*.log
+logs/
+*/logs/
+
+# Extracted APKs
+pulls/
+*/pulls/
 *.apk
 
-# Environment
-.env
-
 # IDE
-.vscode/
 .idea/
+.vscode/
 *.swp
 *.swo
+*~
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Android
+.android/
+*.avd/
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/

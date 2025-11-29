@@ -1,7 +1,12 @@
 version: '3.8'
 
+# APK Extractor - Full Stack Docker Compose
+
 services:
-  # Android Device Containers
+  # ===========================================
+  # Android Emulator Containers
+  # ===========================================
+  
   android-1:
     build: ./docker-android
     container_name: android-device-1
@@ -10,10 +15,21 @@ services:
       - "5001:5001"
     environment:
       - DEVICE=emulator-5554
+      - EMULATOR_DEVICE=Samsung Galaxy S10
+      - WEB_VNC=false
+      - ADB_TIMEOUT=60
+      - EXTRACTION_TIMEOUT=300
     volumes:
       - apk-storage:/app/pulls
+      - android-logs:/app/logs
     shm_size: 2gb
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
 
   android-2:
     build: ./docker-android
@@ -23,10 +39,21 @@ services:
       - "5002:5001"
     environment:
       - DEVICE=emulator-5554
+      - EMULATOR_DEVICE=Samsung Galaxy S10
+      - WEB_VNC=false
+      - ADB_TIMEOUT=60
+      - EXTRACTION_TIMEOUT=300
     volumes:
       - apk-storage:/app/pulls
+      - android-logs:/app/logs
     shm_size: 2gb
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
 
   android-3:
     build: ./docker-android
@@ -36,26 +63,57 @@ services:
       - "5003:5001"
     environment:
       - DEVICE=emulator-5554
+      - EMULATOR_DEVICE=Samsung Galaxy S10
+      - WEB_VNC=false
+      - ADB_TIMEOUT=60
+      - EXTRACTION_TIMEOUT=300
     volumes:
       - apk-storage:/app/pulls
+      - android-logs:/app/logs
     shm_size: 2gb
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
 
-  # Orchestrator
+  # ===========================================
+  # Orchestrator (Load Balancer)
+  # ===========================================
+  
   orchestrator:
     build: ./orchestrator
     container_name: orchestrator
     ports:
       - "8001:8001"
     environment:
-      - CONTAINERS=android-1:5001,android-2:5001,android-3:5001
+      - CONTAINER_URLS=http://android-1:5001,http://android-2:5001,http://android-3:5001
+      - WORKER_THREADS=3
+      - EXTRACTION_TIMEOUT=180
+      - RESULT_EXPIRATION=3600
+      - MAX_CACHED_RESULTS=1000
+      - HEALTH_CHECK_INTERVAL=60
+      - LOG_LEVEL=INFO
+    volumes:
+      - orchestrator-logs:/app/logs
     depends_on:
       - android-1
       - android-2
       - android-3
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
-  # Web Backend
+  # ===========================================
+  # Web Backend (UI & API)
+  # ===========================================
+  
   web-backend:
     build: ./web-backend
     container_name: web-backend
@@ -64,9 +122,38 @@ services:
     environment:
       - USE_ORCHESTRATOR=true
       - ORCHESTRATOR_URL=http://orchestrator:8001
+      - EXTRACTION_TIMEOUT=180
+      - LOG_LEVEL=INFO
+    volumes:
+      - web-logs:/app/logs
     depends_on:
       - orchestrator
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+# ===========================================
+# Volumes
+# ===========================================
 
 volumes:
   apk-storage:
+    driver: local
+  android-logs:
+    driver: local
+  orchestrator-logs:
+    driver: local
+  web-logs:
+    driver: local
+
+# ===========================================
+# Networks
+# ===========================================
+
+networks:
+  default:
+    driver: bridge

@@ -3,276 +3,924 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>APK Extractor - Play Store</title>
+    <title>APK Extractor - Download APKs from Play Store</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a26;
+            --bg-card: rgba(18, 18, 26, 0.8);
+            --accent-cyan: #00f5d4;
+            --accent-purple: #9b5de5;
+            --accent-pink: #f15bb5;
+            --accent-green: #00ff88;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --text-muted: #606070;
+            --border-color: #2a2a3a;
+            --gradient-1: linear-gradient(135deg, #00f5d4 0%, #9b5de5 50%, #f15bb5 100%);
+            --gradient-success: linear-gradient(135deg, #00f5d4 0%, #00ff88 100%);
+            --glow-cyan: 0 0 40px rgba(0, 245, 212, 0.3);
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --radius-xl: 24px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
             min-height: 100vh;
-            padding: 20px;
+            overflow-x: hidden;
         }
-        .container {
-            max-width: 800px;
+
+        /* Background Effects */
+        .bg-effects {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .bg-grid {
+            position: absolute;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(0, 245, 212, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 245, 212, 0.02) 1px, transparent 1px);
+            background-size: 80px 80px;
+        }
+
+        .bg-glow {
+            position: absolute;
+            width: 800px;
+            height: 800px;
+            border-radius: 50%;
+            filter: blur(150px);
+            opacity: 0.3;
+        }
+
+        .bg-glow-1 {
+            background: var(--accent-cyan);
+            top: -400px;
+            right: -200px;
+        }
+
+        .bg-glow-2 {
+            background: var(--accent-purple);
+            bottom: -400px;
+            left: -200px;
+        }
+
+        /* Header */
+        header {
+            position: relative;
+            z-index: 100;
+            background: rgba(10, 10, 15, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 32px;
+        }
+
+        .header-content {
+            max-width: 1400px;
             margin: 0 auto;
-            background: white;
-            border-radius: 10px;
-            padding: 30px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 72px;
         }
-        h1 { color: #333; margin-bottom: 10px; }
-        .subtitle { color: #666; margin-bottom: 30px; }
-        .status {
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            display: none;
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 14px;
         }
-        .status.healthy { background: #d4edda; color: #155724; display: block; }
-        .status.error { background: #f8d7da; color: #721c24; display: block; }
-        .form-group {
-            margin-bottom: 20px;
+
+        .logo-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--gradient-1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
         }
-        label {
+
+        .logo-text {
+            font-size: 22px;
+            font-weight: 600;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
+        .status-dot.healthy {
+            background: var(--accent-green);
+            box-shadow: 0 0 10px var(--accent-green);
+        }
+
+        .status-dot.unhealthy {
+            background: var(--accent-pink);
+            box-shadow: 0 0 10px var(--accent-pink);
+        }
+
+        /* Main Content */
+        main {
+            position: relative;
+            z-index: 10;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 60px 32px;
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .hero h1 {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            line-height: 1.2;
+        }
+
+        .hero h1 span {
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 550px;
+            margin: 0 auto;
+        }
+
+        /* Extraction Card */
+        .extraction-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            padding: 40px;
+            margin-bottom: 40px;
+        }
+
+        .input-section {
+            margin-bottom: 24px;
+        }
+
+        .input-label {
             display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #333;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
         }
-        input[type="text"] {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
+
+        .input-group {
+            display: flex;
+            gap: 16px;
+        }
+
+        .package-input {
+            flex: 1;
+            padding: 18px 24px;
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
             font-size: 16px;
+            transition: all 0.3s ease;
         }
-        input[type="text"]:focus {
+
+        .package-input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 4px rgba(0, 245, 212, 0.1);
         }
-        button {
-            background: #667eea;
-            color: white;
-            padding: 12px 30px;
+
+        .package-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .extract-btn {
+            padding: 18px 40px;
+            background: var(--gradient-1);
             border: none;
-            border-radius: 5px;
+            border-radius: var(--radius-md);
+            color: var(--bg-primary);
+            font-family: 'Outfit', sans-serif;
             font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
-            transition: background 0.3s;
+            transition: all 0.3s ease;
+            white-space: nowrap;
         }
-        button:hover { background: #5568d3; }
-        button:disabled {
-            background: #ccc;
+
+        .extract-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px -10px rgba(0, 245, 212, 0.5);
+        }
+
+        .extract-btn:disabled {
+            opacity: 0.5;
             cursor: not-allowed;
         }
-        .loading {
+
+        /* Example packages */
+        .examples {
+            margin-top: 16px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .examples span {
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: color 0.2s;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .examples span:hover {
+            color: var(--accent-cyan);
+        }
+
+        /* Loading State */
+        .loading-section {
             display: none;
             text-align: center;
-            margin: 20px 0;
+            padding: 40px 20px;
         }
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
+
+        .loading-section.active {
+            display: block;
+        }
+
+        .spinner-ring {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 24px;
+            position: relative;
+        }
+
+        .spinner-ring::before,
+        .spinner-ring::after {
+            content: '';
+            position: absolute;
+            inset: 0;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            border: 3px solid transparent;
+        }
+
+        .spinner-ring::before {
+            border-top-color: var(--accent-cyan);
             animation: spin 1s linear infinite;
-            margin: 0 auto;
         }
+
+        .spinner-ring::after {
+            border-right-color: var(--accent-purple);
+            animation: spin 1.5s linear infinite reverse;
+        }
+
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            to { transform: rotate(360deg); }
         }
-        .results {
+
+        .loading-text {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+
+        .loading-text strong {
+            color: var(--accent-cyan);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .queue-info {
+            margin-top: 16px;
+            padding: 16px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* Error Message */
+        .error-section {
             display: none;
-            margin-top: 30px;
+            padding: 20px 24px;
+            background: rgba(241, 91, 181, 0.1);
+            border: 1px solid rgba(241, 91, 181, 0.3);
+            border-radius: var(--radius-md);
+            margin-top: 24px;
         }
-        .file-list {
-            list-style: none;
-        }
-        .file-item {
-            background: #f8f9fa;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 5px;
+
+        .error-section.active {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
+            gap: 14px;
         }
+
+        .error-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .error-content h4 {
+            color: var(--accent-pink);
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .error-content p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* Results Section */
+        .results-section {
+            display: none;
+            margin-top: 32px;
+            animation: slideUp 0.4s ease;
+        }
+
+        .results-section.active {
+            display: block;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .results-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .results-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .results-header h3::before {
+            content: '✓';
+            width: 28px;
+            height: 28px;
+            background: var(--gradient-success);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: var(--bg-primary);
+        }
+
+        .results-meta {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .file-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .file-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .file-card:hover {
+            border-color: var(--accent-cyan);
+            background: rgba(0, 245, 212, 0.05);
+        }
+
+        .file-icon {
+            width: 56px;
+            height: 56px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            flex-shrink: 0;
+        }
+
         .file-info {
             flex: 1;
+            min-width: 0;
         }
+
         .file-name {
-            font-weight: bold;
-            color: #333;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 8px;
         }
+
         .file-meta {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
         }
+
+        .file-meta span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .hash-value {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .hash-value:hover {
+            color: var(--accent-cyan);
+        }
+
         .download-btn {
-            background: #28a745;
-            padding: 8px 20px;
+            padding: 12px 24px;
+            background: var(--gradient-success);
+            border: none;
+            border-radius: var(--radius-sm);
+            color: var(--bg-primary);
+            font-family: 'Outfit', sans-serif;
             font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
         }
-        .download-btn:hover { background: #218838; }
-        .error-message {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 20px;
-            display: none;
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px -8px rgba(0, 255, 136, 0.4);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 32px;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            padding: 16px 24px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 14px;
+            z-index: 1000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            border-color: var(--accent-green);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-content {
+                padding: 0 16px;
+            }
+
+            main {
+                padding: 40px 16px;
+            }
+
+            .hero h1 {
+                font-size: 28px;
+            }
+
+            .extraction-card {
+                padding: 24px;
+            }
+
+            .input-group {
+                flex-direction: column;
+            }
+
+            .extract-btn {
+                width: 100%;
+            }
+
+            .file-card {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+
+            .file-info {
+                text-align: left;
+            }
+
+            .download-btn {
+                width: 100%;
+                justify-content: center;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🔐 APK Extractor</h1>
-        <p class="subtitle">Extract official APKs from Google Play Store</p>
-        
-        <div id="deviceStatus" class="status"></div>
-        
-        <div class="form-group">
-            <label for="packageName">Package Name or Play Store URL</label>
-            <input 
-                type="text" 
-                id="packageName" 
-                placeholder="e.g., com.whatsapp or https://play.google.com/store/apps/details?id=com.whatsapp"
-                autocomplete="off"
-            >
-        </div>
-        
-        <button id="extractBtn" onclick="extractAPK()">Extract APK</button>
-        
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p>Extracting APK... This may take a minute.</p>
-        </div>
-        
-        <div class="error-message" id="errorMessage"></div>
-        
-        <div class="results" id="results">
-            <h2>📦 Extracted Files</h2>
-            <ul class="file-list" id="fileList"></ul>
-        </div>
+    <div class="bg-effects">
+        <div class="bg-grid"></div>
+        <div class="bg-glow bg-glow-1"></div>
+        <div class="bg-glow bg-glow-2"></div>
     </div>
-    
+
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">📦</div>
+                <span class="logo-text">APK Extractor</span>
+            </div>
+            <div class="status-badge">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Checking...</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <h1>Download <span>APKs</span> from Play Store</h1>
+            <p>Enter a package name and get the official APK files directly extracted from Google Play Store.</p>
+        </section>
+
+        <div class="extraction-card">
+            <div class="input-section">
+                <label class="input-label">Package Name</label>
+                <div class="input-group">
+                    <input 
+                        type="text" 
+                        id="packageInput" 
+                        class="package-input"
+                        placeholder="com.example.app"
+                        autocomplete="off"
+                        spellcheck="false"
+                    >
+                    <button id="extractBtn" class="extract-btn" onclick="startExtraction()">
+                        Extract APK
+                    </button>
+                </div>
+                <div class="examples">
+                    Try: 
+                    <span onclick="setPackage('com.whatsapp')">com.whatsapp</span> • 
+                    <span onclick="setPackage('com.instagram.android')">com.instagram.android</span> • 
+                    <span onclick="setPackage('com.twitter.android')">com.twitter.android</span>
+                </div>
+            </div>
+
+            <div class="loading-section" id="loadingSection">
+                <div class="spinner-ring"></div>
+                <p class="loading-text">
+                    Extracting <strong id="loadingPackage">...</strong>
+                </p>
+                <div class="queue-info" id="queueInfo" style="display: none;">
+                    <span id="queueStatus">Position in queue: 1</span>
+                </div>
+            </div>
+
+            <div class="error-section" id="errorSection">
+                <span class="error-icon">⚠️</span>
+                <div class="error-content">
+                    <h4>Extraction Failed</h4>
+                    <p id="errorMessage"></p>
+                </div>
+            </div>
+
+            <div class="results-section" id="resultsSection">
+                <div class="results-header">
+                    <h3>Extraction Complete</h3>
+                    <span class="results-meta" id="resultsMeta"></span>
+                </div>
+                <div class="file-grid" id="fileGrid"></div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>APK Extractor • Extract official APKs for security analysis</p>
+    </footer>
+
+    <div class="toast" id="toast"></div>
+
     <script>
-        // Check device status on load
-        window.addEventListener('load', checkHealth);
-        
+        const MODE = '{{ mode }}';
+        let currentJobId = null;
+        let pollInterval = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkHealth();
+            document.getElementById('packageInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') startExtraction();
+            });
+        });
+
+        // Set package from examples
+        function setPackage(pkg) {
+            document.getElementById('packageInput').value = pkg;
+            document.getElementById('packageInput').focus();
+        }
+
+        // Health Check
         async function checkHealth() {
             try {
                 const response = await fetch('/api/health');
                 const data = await response.json();
-                const statusDiv = document.getElementById('deviceStatus');
                 
-                if (data.status === 'healthy') {
-                    statusDiv.className = 'status healthy';
-                    statusDiv.textContent = `✓ Device agent online (${data.devices} device(s) connected)`;
+                const statusDot = document.getElementById('statusDot');
+                const statusText = document.getElementById('statusText');
+                
+                if (data.status === 'healthy' || data.orchestrator === 'healthy') {
+                    statusDot.className = 'status-dot healthy';
+                    if (MODE === 'orchestrator' && data.containers) {
+                        const available = data.containers.filter(c => !c.busy && c.status === 'healthy').length;
+                        statusText.textContent = `${available}/${data.containers.length} Devices`;
+                    } else {
+                        statusText.textContent = 'Device Ready';
+                    }
                 } else {
-                    statusDiv.className = 'status error';
-                    statusDiv.textContent = '✗ Device agent offline or no devices connected';
+                    statusDot.className = 'status-dot unhealthy';
+                    statusText.textContent = 'Offline';
                 }
             } catch (error) {
-                const statusDiv = document.getElementById('deviceStatus');
-                statusDiv.className = 'status error';
-                statusDiv.textContent = '✗ Cannot reach device agent';
+                document.getElementById('statusDot').className = 'status-dot unhealthy';
+                document.getElementById('statusText').textContent = 'Disconnected';
             }
         }
-        
-        function extractPackageName(input) {
-            // Extract package name from Play Store URL or use as-is
-            const match = input.match(/id=([a-zA-Z0-9_.]+)/);
-            return match ? match[1] : input.trim();
-        }
-        
+
+        // Format bytes
         function formatBytes(bytes) {
-            if (bytes === 0) return '0 Bytes';
+            if (!bytes || bytes === 0) return '0 B';
             const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const sizes = ['B', 'KB', 'MB', 'GB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
         }
-        
-        async function extractAPK() {
-            const input = document.getElementById('packageName').value;
-            const packageName = extractPackageName(input);
+
+        // Start extraction
+        async function startExtraction() {
+            const packageName = document.getElementById('packageInput').value.trim();
             
             if (!packageName) {
-                showError('Please enter a package name or Play Store URL');
+                showError('Please enter a package name');
                 return;
             }
-            
-            // UI state
-            document.getElementById('extractBtn').disabled = true;
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('results').style.display = 'none';
-            document.getElementById('errorMessage').style.display = 'none';
-            
+
+            // Reset UI
+            hideError();
+            hideResults();
+            showLoading(packageName);
+            setButtonState(true);
+
             try {
                 const response = await fetch('/api/extract', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ package: packageName })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (response.ok) {
-                    displayResults(data);
+                    if (MODE === 'orchestrator' && data.job_id) {
+                        // Async mode - start polling
+                        currentJobId = data.job_id;
+                        updateQueueInfo(data.queue_position || 0);
+                        startPolling();
+                    } else if (data.files) {
+                        // Sync mode - show results immediately
+                        hideLoading();
+                        showResults(data);
+                        showToast('Extraction complete!', 'success');
+                    } else {
+                        throw new Error(data.error || 'Unknown error');
+                    }
                 } else {
-                    showError(data.error || 'Extraction failed');
+                    throw new Error(data.error || `Request failed (${response.status})`);
                 }
             } catch (error) {
-                showError('Network error: ' + error.message);
+                hideLoading();
+                showError(error.message);
             } finally {
-                document.getElementById('extractBtn').disabled = false;
-                document.getElementById('loading').style.display = 'none';
+                if (MODE !== 'orchestrator') {
+                    setButtonState(false);
+                }
             }
         }
-        
-        function displayResults(data) {
-            const fileList = document.getElementById('fileList');
-            fileList.innerHTML = '';
+
+        // Polling for orchestrator mode
+        function startPolling() {
+            if (pollInterval) clearInterval(pollInterval);
             
-            data.files.forEach(file => {
-                const li = document.createElement('li');
-                li.className = 'file-item';
-                li.innerHTML = `
+            pollInterval = setInterval(async () => {
+                if (!currentJobId) {
+                    stopPolling();
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/status/${currentJobId}`);
+                    const data = await response.json();
+
+                    if (data.status === 'completed') {
+                        stopPolling();
+                        hideLoading();
+                        showResults(data.data);
+                        showToast('Extraction complete!', 'success');
+                        setButtonState(false);
+                    } else if (data.status === 'failed') {
+                        stopPolling();
+                        hideLoading();
+                        showError(data.error || 'Extraction failed');
+                        setButtonState(false);
+                    } else {
+                        updateQueueInfo(data.queue_position || 'Processing...');
+                    }
+                } catch (error) {
+                    console.error('Polling error:', error);
+                }
+            }, 3000);
+        }
+
+        function stopPolling() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+            currentJobId = null;
+        }
+
+        function updateQueueInfo(position) {
+            const queueInfo = document.getElementById('queueInfo');
+            const queueStatus = document.getElementById('queueStatus');
+            
+            queueInfo.style.display = 'block';
+            if (typeof position === 'number' && position > 0) {
+                queueStatus.textContent = `Position in queue: ${position}`;
+            } else {
+                queueStatus.textContent = 'Processing extraction...';
+            }
+        }
+
+        // UI Helpers
+        function showLoading(packageName) {
+            document.getElementById('loadingSection').classList.add('active');
+            document.getElementById('loadingPackage').textContent = packageName;
+            document.getElementById('queueInfo').style.display = 'none';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingSection').classList.remove('active');
+        }
+
+        function showError(message) {
+            document.getElementById('errorSection').classList.add('active');
+            document.getElementById('errorMessage').textContent = message;
+        }
+
+        function hideError() {
+            document.getElementById('errorSection').classList.remove('active');
+        }
+
+        function showResults(data) {
+            const resultsSection = document.getElementById('resultsSection');
+            const resultsMeta = document.getElementById('resultsMeta');
+            const fileGrid = document.getElementById('fileGrid');
+
+            const totalSize = data.total_size || data.files.reduce((sum, f) => sum + f.size, 0);
+            resultsMeta.textContent = `${data.total_files || data.files.length} file(s) • ${data.total_size_human || formatBytes(totalSize)}`;
+
+            fileGrid.innerHTML = data.files.map(file => `
+                <div class="file-card">
+                    <div class="file-icon">📄</div>
                     <div class="file-info">
                         <div class="file-name">${file.filename}</div>
                         <div class="file-meta">
-                            Size: ${formatBytes(file.size)} | 
-                            Hash: ${file.hash.substring(0, 16)}...
+                            <span>📦 ${file.size_human || formatBytes(file.size)}</span>
+                            <span class="hash-value" onclick="copyHash('${file.hash}')" title="Click to copy full hash">
+                                🔐 ${file.hash.substring(0, 12)}...
+                            </span>
                         </div>
                     </div>
                     <button class="download-btn" onclick="downloadFile('${data.package}', '${file.filename}')">
-                        Download
+                        ⬇️ Download
                     </button>
-                `;
-                fileList.appendChild(li);
-            });
-            
-            document.getElementById('results').style.display = 'block';
+                </div>
+            `).join('');
+
+            resultsSection.classList.add('active');
         }
-        
+
+        function hideResults() {
+            document.getElementById('resultsSection').classList.remove('active');
+        }
+
+        function setButtonState(disabled) {
+            const btn = document.getElementById('extractBtn');
+            btn.disabled = disabled;
+            btn.textContent = disabled ? 'Extracting...' : 'Extract APK';
+        }
+
         function downloadFile(packageName, filename) {
             window.location.href = `/api/download/${packageName}/${filename}`;
         }
-        
-        function showError(message) {
-            const errorDiv = document.getElementById('errorMessage');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
+
+        function copyHash(hash) {
+            navigator.clipboard.writeText(hash).then(() => {
+                showToast('Hash copied to clipboard!', 'success');
+            });
         }
-        
-        // Allow Enter key to submit
-        document.getElementById('packageName').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') extractAPK();
-        });
+
+        function showToast(message, type = '') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type;
+            
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Refresh health status periodically
+        setInterval(checkHealth, 30000);
     </script>
 </body>
 </html>
