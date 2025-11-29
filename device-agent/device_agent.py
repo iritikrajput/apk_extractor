@@ -471,11 +471,14 @@ def wait_for_installation(package_name, timeout=None):
     
     logger.info(f"Waiting for {package_name} installation (max {timeout}s)...")
     start = time.time()
+    last_status = ""
     
     while time.time() - start < timeout:
-        # Check if installed
+        # Check if installed via package manager (most reliable)
         if check_app_installed(package_name):
             logger.info(f"{package_name} installed successfully!")
+            # Wait a bit more for system to fully register
+            time.sleep(3)
             return True
         
         # Check UI for status
@@ -483,14 +486,36 @@ def wait_for_installation(package_name, timeout=None):
         
         # If we see "Open" button, app is installed
         if "Open" in xml and "Uninstall" in xml:
-            logger.info("Detected 'Open' button - app installed")
+            logger.info("Detected 'Open' and 'Uninstall' buttons - app installed")
+            # Wait and verify with package manager
+            time.sleep(3)
+            if check_app_installed(package_name):
+                return True
+            # Give it more time
+            time.sleep(5)
             return check_app_installed(package_name)
         
-        # Still downloading/installing
-        if any(x in xml for x in ["Downloading", "Installing", "Pending", "%"]):
-            logger.debug("Installation in progress...")
+        # Track and log status
+        current_status = ""
+        if "Downloading" in xml:
+            current_status = "Downloading"
+        elif "Installing" in xml:
+            current_status = "Installing"
+        elif "Pending" in xml:
+            current_status = "Pending"
+        elif "%" in xml:
+            current_status = "Downloading"
+        
+        if current_status and current_status != last_status:
+            logger.info(f"Status: {current_status}...")
+            last_status = current_status
         
         time.sleep(5)
+    
+    # Final check after timeout
+    if check_app_installed(package_name):
+        logger.info(f"{package_name} installed (detected after timeout)")
+        return True
     
     logger.warning(f"Installation timeout for {package_name}")
     return False
@@ -509,7 +534,7 @@ def install_from_play_store(package_name):
     
     # Open Play Store
     open_play_store_app(package_name)
-    time.sleep(3)
+    time.sleep(4)
     
     # Check if app exists
     xml = get_screen_xml()
@@ -523,6 +548,21 @@ def install_from_play_store(package_name):
     for attempt in range(5):
         logger.info(f"Install attempt {attempt + 1}/5")
         
+        # First check if already installed (Open button visible)
+        xml = get_screen_xml()
+        if "Open" in xml and "Uninstall" in xml:
+            logger.info("App already installed (Open button detected)")
+            press_home()
+            time.sleep(2)
+            return "installed"
+        
+        # Check if already installed via pm
+        if check_app_installed(package_name):
+            logger.info(f"{package_name} is now installed")
+            press_home()
+            time.sleep(2)
+            return "installed"
+        
         # Click Install
         click_install_button()
         time.sleep(3)
@@ -534,8 +574,17 @@ def install_from_play_store(package_name):
         if wait_for_download_to_start():
             # Wait for installation
             if wait_for_installation(package_name):
+                logger.info(f"Installation of {package_name} completed!")
                 press_home()
+                time.sleep(2)
                 return "installed"
+        
+        # Check again if installed while we were waiting
+        if check_app_installed(package_name):
+            logger.info(f"{package_name} installed (detected after waiting)")
+            press_home()
+            time.sleep(2)
+            return "installed"
         
         # If still on same page, try scrolling and clicking again
         xml = get_screen_xml()
@@ -543,11 +592,20 @@ def install_from_play_store(package_name):
             scroll_down()
             time.sleep(1)
     
-    # Final check
+    # Final checks
     time.sleep(5)
     if check_app_installed(package_name):
         press_home()
+        time.sleep(2)
         return "installed"
+    
+    # One more UI check
+    xml = get_screen_xml()
+    if "Open" in xml:
+        press_home()
+        time.sleep(2)
+        if check_app_installed(package_name):
+            return "installed"
     
     logger.warning(f"Failed to install {package_name}")
     press_home()
@@ -688,11 +746,42 @@ def extract_apk():
                     "error": "Failed to install app. Try again or install manually.",
                     "package": package
                 }), 500
+            
+            # IMPORTANT: Wait after installation for system to settle
+            logger.info("Installation complete, waiting for system to settle...")
+            press_home()
+            time.sleep(5)
+            
+            # Verify installation with retries
+            for verify_attempt in range(5):
+                if check_app_installed(package):
+                    logger.info(f"Verified: {package} is installed")
+                    break
+                logger.info(f"Waiting for installation to register... (attempt {verify_attempt + 1})")
+                time.sleep(3)
+            else:
+                # One final check
+                if not check_app_installed(package):
+                    return jsonify({
+                        "error": "App installed but not detected. Please try again.",
+                        "package": package
+                    }), 500
         
-        # Get APK paths
-        apk_paths = get_apk_paths(package)
+        # Go home and wait before extraction
+        press_home()
+        time.sleep(2)
+        
+        # Get APK paths with retries
+        apk_paths = None
+        for path_attempt in range(3):
+            apk_paths = get_apk_paths(package)
+            if apk_paths:
+                break
+            logger.info(f"Retrying APK path lookup... (attempt {path_attempt + 1})")
+            time.sleep(2)
+        
         if not apk_paths:
-            return jsonify({"error": "No APK found", "package": package}), 404
+            return jsonify({"error": "No APK found. App may still be installing.", "package": package}), 404
         
         # Extract
         pkg_dir = os.path.join(DATA_DIR, sanitize_filename(package))
