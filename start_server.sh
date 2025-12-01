@@ -132,6 +132,29 @@ else
     exit 1
 fi
 
+# Check if Play Store is signed in by trying to access it
+echo -e "\n${YELLOW}Checking Play Store status...${NC}"
+PLAYSTORE_SIGNED_IN=false
+
+# Open Play Store and check for sign-in screen
+adb shell am start -n com.android.vending/.AssetBrowserActivity 2>/dev/null
+sleep 5
+
+# Dump UI and check for sign-in indicators
+adb shell uiautomator dump /sdcard/ui_check.xml 2>/dev/null
+UI_CONTENT=$(adb shell cat /sdcard/ui_check.xml 2>/dev/null || echo "")
+
+if echo "$UI_CONTENT" | grep -qi "Sign in\|sign in\|Add account"; then
+    echo -e "${RED}⚠ Play Store NOT signed in${NC}"
+    PLAYSTORE_SIGNED_IN=false
+else
+    echo -e "${GREEN}✓ Play Store appears to be signed in${NC}"
+    PLAYSTORE_SIGNED_IN=true
+fi
+
+# Go back to home
+adb shell input keyevent KEYCODE_HOME 2>/dev/null
+
 # Get IP
 LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
 
@@ -149,11 +172,21 @@ echo "  ✓ Auto-cleanup after download"
 echo "  ✓ 24/7 headless operation"
 echo "  ✓ No emulator restart needed"
 
-if [ -n "$GOOGLE_EMAIL" ]; then
-    echo "  ✓ Google auto-login configured"
+if [ "$PLAYSTORE_SIGNED_IN" = true ]; then
+    echo -e "  ${GREEN}✓ Play Store signed in${NC}"
 else
-    echo -e "  ${YELLOW}⚠ Google login not configured${NC}"
-    echo "    Set GOOGLE_EMAIL and GOOGLE_PASSWORD in .env"
+    echo ""
+    echo -e "${RED}=============================================="
+    echo "  PLAY STORE NOT SIGNED IN!"
+    echo -e "==============================================${NC}"
+    echo ""
+    echo "The emulator needs Google Play Store sign-in to download apps."
+    echo "This must be done ONCE manually (Google security requirement)."
+    echo ""
+    echo "Run this command to sign in:"
+    echo -e "  ${GREEN}./setup_google_login.sh${NC}"
+    echo ""
+    echo "Then restart this script after signing in."
 fi
 
 echo ""

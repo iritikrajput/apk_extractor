@@ -135,56 +135,43 @@ pip3 install -r device-agent/requirements.txt
 pip3 install -r web-backend/requirements.txt
 ```
 
-### Step 5: Configure Google Account
+### Step 5: One-Time Google Play Store Sign-In (REQUIRED)
+
+> ⚠️ **IMPORTANT**: Google Play Store requires **manual sign-in** due to security measures (CAPTCHA, device verification). This only needs to be done **ONCE** - the login persists for future headless runs.
 
 ```bash
-# Copy example config
-cp env.example .env
-
-# Edit with your Google credentials
-nano .env
+# Run the setup script
+./setup_google_login.sh
 ```
 
-**Edit `.env` file:**
-```ini
-# Google Account for Play Store auto-login
-GOOGLE_EMAIL=your-email@gmail.com
-GOOGLE_PASSWORD=your-app-password
+This will start the emulator **with a GUI window**. In the emulator:
 
-# Settings
-AUTO_CLEANUP=true
-CLEANUP_DELAY=300
-```
+1. **Wait** for emulator to fully boot (1-2 minutes)
+2. **Open** the Play Store app
+3. **Sign in** with your Google account
+4. **Accept** all terms and conditions
+5. **Download** any small app to verify sign-in works
+6. **Close** the emulator window
 
-> ⚠️ **Important**: If you have 2-Factor Authentication enabled on your Google account:
-> 1. Go to https://myaccount.google.com/apppasswords
-> 2. Create an "App Password"
-> 3. Use that password in the `.env` file
+> 💡 **Tip**: Use a dedicated Google account for this, not your personal one.
 
-### Step 6: First-Time Play Store Setup
+After signing in, the credentials persist in the emulator's data. You can now run headless!
 
-The first time, you need to sign into Play Store manually:
+### Step 6: Start the Server (Headless)
 
 ```bash
-# Start emulator with GUI
-emulator -avd playstore_device
+# Make scripts executable
+chmod +x start_server.sh setup_google_login.sh
 
-# In the emulator window:
-# 1. Open Play Store app
-# 2. Sign in with your Google account
-# 3. Accept terms and conditions
-# 4. Close the emulator
-```
-
-### Step 7: Start the Server
-
-```bash
-# Make start script executable
-chmod +x start_server.sh
-
-# Start all services
+# Start all services in headless mode
 ./start_server.sh
 ```
+
+The server will:
+- Start emulator in headless mode (no GUI)
+- Start Device Agent on port 5001
+- Start Web Backend on port 8000
+- Configure emulator for 24/7 operation
 
 ---
 
@@ -366,12 +353,27 @@ sudo chmod 666 /dev/kvm
 
 ### Play Store Not Signed In
 
-1. Start emulator with GUI:
-   ```bash
-   emulator -avd playstore_device
-   ```
-2. Open Play Store and sign in manually
-3. Restart the server
+> ⚠️ **Google requires manual sign-in** due to security measures (CAPTCHA, 2FA, device verification). Automated login does NOT work reliably.
+
+**Solution: One-time manual sign-in**
+
+```bash
+# Run the setup script (starts emulator WITH GUI)
+./setup_google_login.sh
+```
+
+In the emulator window:
+1. Open Play Store app
+2. Sign in with your Google account
+3. Accept terms, download any test app
+4. Close the emulator
+
+Then restart in headless mode:
+```bash
+./start_server.sh
+```
+
+The login will persist across restarts!
 
 ### "App Not Found" Error
 
