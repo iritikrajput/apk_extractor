@@ -20,7 +20,7 @@ export ANDROID_HOME=~/Android/Sdk
 export PATH=$PATH:$ANDROID_HOME/emulator
 
 # Start with GUI
-emulator -avd playstore_device
+emulator -avd Pixel_8
 ```
 
 ### Step 2: Initial Boot
@@ -120,19 +120,19 @@ Some apps require device certification (SafetyNet). Most apps work without it, b
 
 2. Use hardware acceleration:
    ```bash
-   emulator -avd playstore_device -gpu host
+   emulator -avd Pixel_8 -gpu host
    ```
 
 3. Allocate more RAM:
    ```bash
-   emulator -avd playstore_device -memory 4096
+   emulator -avd Pixel_8 -memory 4096
    ```
 
 ### Persist Data
 
 The AVD stores all data in:
 ```
-~/.android/avd/playstore_device.avd/
+~/.android/avd/Pixel_8.avd/
 ```
 
 To backup Play Store login:

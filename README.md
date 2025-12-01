@@ -114,7 +114,7 @@ sdkmanager "system-images;android-34;google_apis_playstore;x86_64"
 ```bash
 # Create AVD with Play Store
 avdmanager create avd \
-    -n playstore_device \
+    -n Pixel_8 \
     -k "system-images;android-34;google_apis_playstore;x86_64" \
     -d "pixel_3a" \
     --force

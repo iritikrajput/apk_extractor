@@ -39,9 +39,9 @@ pkill -f "qemu-system" 2>/dev/null || true
 sleep 3
 
 # Check if AVD exists
-if ! emulator -list-avds 2>/dev/null | grep -q "playstore_device"; then
-    echo -e "${RED}Error: AVD 'playstore_device' not found${NC}"
-    echo "Create it first with: avdmanager create avd -n playstore_device -k 'system-images;android-34;google_apis_playstore;x86_64' -d 'pixel_3a'"
+if ! emulator -list-avds 2>/dev/null | grep -q "Pixel_8_API_36"; then
+    echo -e "${RED}Error: AVD 'Pixel_8_API_36' not found${NC}"
+    echo "Create it first with: avdmanager create avd -n Pixel_8_API_36 -k 'system-images;android-34;google_apis_playstore;x86_64' -d 'pixel_3a'"
     exit 1
 fi
 
@@ -50,7 +50,7 @@ echo -e "${GREEN}Starting emulator WITH GUI...${NC}"
 echo ""
 
 # Start emulator with GUI
-emulator -avd playstore_device -gpu swiftshader_indirect &
+emulator -avd Pixel_8_API_36 -gpu swiftshader_indirect &
 EMULATOR_PID=$!
 
 echo -e "${CYAN}"

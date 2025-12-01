@@ -60,7 +60,7 @@ fi
 echo -e "${GREEN}✓ avdmanager found${NC}"
 
 # Configuration
-AVD_NAME="${AVD_NAME:-playstore_device}"
+AVD_NAME="${AVD_NAME:-Pixel_8_API_36}"
 SYSTEM_IMAGE="system-images;android-30;google_apis_playstore;x86_64"
 DEVICE_TYPE="pixel_3a"
 

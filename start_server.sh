@@ -15,7 +15,7 @@ if [ -f ".env" ]; then
 fi
 
 # Configuration
-AVD_NAME="${AVD_NAME:-playstore_device}"
+AVD_NAME="${AVD_NAME:-Pixel_8_API_36}"
 export ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
 export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator"
 

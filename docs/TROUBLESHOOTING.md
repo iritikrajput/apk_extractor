@@ -57,7 +57,7 @@ Solutions for common issues with APK Extractor.
 
 4. **Try with different GPU mode:**
    ```bash
-   emulator -avd playstore_device -gpu swiftshader_indirect
+   emulator -avd Pixel_8 -gpu swiftshader_indirect
    ```
 
 ### Emulator Very Slow
@@ -66,18 +66,18 @@ Solutions for common issues with APK Extractor.
 
 1. **Enable hardware acceleration:**
    ```bash
-   emulator -avd playstore_device -gpu host
+   emulator -avd Pixel_8 -gpu host
    ```
 
 2. **Allocate more RAM:**
    ```bash
-   emulator -avd playstore_device -memory 4096
+   emulator -avd Pixel_8 -memory 4096
    ```
 
 3. **Use x86_64 image (not ARM):**
    ```bash
    # Check current image
-   cat ~/.android/avd/playstore_device.avd/config.ini | grep image
+   cat ~/.android/avd/Pixel_8.avd/config.ini | grep image
    
    # Should show x86_64
    ```
@@ -130,7 +130,7 @@ Solutions for common issues with APK Extractor.
 
 2. **Verify image type:**
    ```bash
-   cat ~/.android/avd/playstore_device.avd/config.ini | grep image
+   cat ~/.android/avd/Pixel_8.avd/config.ini | grep image
    # Should contain "google_apis_playstore"
    ```
 

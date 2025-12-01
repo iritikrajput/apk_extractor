@@ -12,7 +12,7 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 # Configuration
-AVD_NAME="${AVD_NAME:-playstore_device}"
+AVD_NAME="${AVD_NAME:-Pixel_8_API_36}"
 HEADLESS="${HEADLESS:-true}"
 WAIT_TIMEOUT="${WAIT_TIMEOUT:-300}"
 

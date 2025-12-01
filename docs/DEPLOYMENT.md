@@ -77,7 +77,7 @@ cd apk-extractor
 ./emulator-setup/create_avd.sh
 
 # First-time setup (with GUI)
-emulator -avd playstore_device
+emulator -avd Pixel_8
 
 # In emulator:
 # 1. Open Play Store
