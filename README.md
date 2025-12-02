@@ -10,14 +10,14 @@ A fully automated system that downloads official APK files from Google Play Stor
 
 | Feature | Description |
 |---------|-------------|
-| 🤖 **Auto-Install** | Automatically installs apps from Play Store |
-| 🔐 **Auto-Login** | Automatically signs into Google Play Store |
-| 📱 **Official APKs** | Extracts authentic APKs directly from Play Store |
-| 🧹 **Auto-Cleanup** | Automatically uninstalls apps after download to free memory |
-| 🔒 **SHA-256 Verification** | Hash verification for all extracted files |
-| 🌐 **Web Interface** | Beautiful, easy-to-use web UI |
-| ⚡ **24/7 Operation** | Emulator runs continuously without restart |
-| 📦 **Split APK Support** | Handles modern Android App Bundles |
+| **Auto-Install** | Automatically installs apps from Play Store |
+| **Auto-Login** | Automatically signs into Google Play Store |
+| **Official APKs** | Extracts authentic APKs directly from Play Store |
+| **Auto-Cleanup** | Automatically uninstalls apps after download to free memory |
+| **SHA-256 Verification** | Hash verification for all extracted files |
+| **Web Interface** | Beautiful, easy-to-use web UI |
+| **24/7 Operation** | Emulator runs continuously without restart |
+| **Split APK Support** | Handles modern Android App Bundles |
 
 ---
 
